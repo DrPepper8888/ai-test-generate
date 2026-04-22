@@ -14,6 +14,7 @@ from src.tools.formatter import FormatValidator
 from src.tools.exporter import Exporter
 from src.tools.deduplicator import deduplicate
 from src.tools.quality_gate import QualityGate
+from src.tools.quality_scorer import BatchQualityScorer
 from src.tools.prompt_builder import PromptBuilder
 from src.memory.memory_store import MemoryStore
 from src.memory.rule_injector import RuleInjector
@@ -43,6 +44,7 @@ class GenerationPipeline:
         self.validator = FormatValidator()
         self.exporter = Exporter()
         self.quality_gate = QualityGate()
+        self.quality_scorer = BatchQualityScorer()
 
         PROJECT_ROOT = Path(__file__).parent.parent.parent
         self.memory_store = MemoryStore(PROJECT_ROOT / "data")
@@ -156,7 +158,11 @@ class GenerationPipeline:
                     # 再次去重
                     all_cases = deduplicate(all_cases, scenario_type="general")
 
-            # 移除内部字段（_scenario）
+            # 质量评分（在移除内部字段前，因为评分需要 _scenario）
+            quality_score_result = self.quality_scorer.score_all(all_cases)
+            all_cases = quality_score_result["cases"]
+
+            # 移除内部字段（_scenario、_quality_score 等）
             all_cases = self.quality_gate.remove_internal_fields(all_cases)
 
             review_result = None
@@ -183,6 +189,13 @@ class GenerationPipeline:
                 "count": len(all_cases),
                 "deduplicated": deduplicated_count,
                 "quality_check": quality_result,
+                "quality_score": {
+                    "average_score": quality_score_result["average_score"],
+                    "overall_level": quality_score_result["overall_level"],
+                    "level_counts": quality_score_result["level_counts"],
+                    "top_issues": quality_score_result["top_issues"],
+                    "top_suggestions": quality_score_result["top_suggestions"],
+                },
             }
             if review_result:
                 result["review"] = review_result
@@ -451,6 +464,10 @@ class GenerationPipeline:
                 # 调用对应领域的专家补充生成
                 pass
 
+        # 质量评分
+        quality_score_result = self.quality_scorer.score_all(all_cases)
+        all_cases = quality_score_result["cases"]
+
         # 移除内部字段
         all_cases = self.quality_gate.remove_internal_fields(all_cases)
 
@@ -477,6 +494,13 @@ class GenerationPipeline:
             "deduplicated": result["deduplicated"],
             "expert_counts": result["expert_counts"],
             "quality_check": quality_result,
+            "quality_score": {
+                "average_score": quality_score_result["average_score"],
+                "overall_level": quality_score_result["overall_level"],
+                "level_counts": quality_score_result["level_counts"],
+                "top_issues": quality_score_result["top_issues"],
+                "top_suggestions": quality_score_result["top_suggestions"],
+            },
             "expert_mode": True,
         }
         if review_result:

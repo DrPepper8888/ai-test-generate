@@ -169,6 +169,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         .batch-actions { background: #e3f2fd; padding: 12px; border-radius: 6px; margin-bottom: 15px; display: flex; gap: 10px; align-items: center; }
         .batch-actions label { display: inline; margin-right: 10px; margin-bottom: 0; }
         .version-badge { font-size: 12px; background: #e3f2fd; color: #1565c0; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 10px; }
+        .quality-badge { font-size: 12px; background: #fce4ec; color: #c2185b; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-left: 10px; }
+        .quality-S { background: #e8f5e9; color: #388e3c; }
+        .quality-A { background: #e3f2fd; color: #1565c0; }
+        .quality-B { background: #fff3e0; color: #f57c00; }
+        .quality-C { background: #ffebee; color: #d32f2f; }
+        .quality-D { background: #ffebee; color: #d32f2f; }
     </style>
 </head>
 <body>
@@ -202,9 +208,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     <label>启用评审</label>
                     <input type="checkbox" id="reviewMode" style="width:auto;margin-top:25px;">
                 </div>
+                <div>
+                    <label>三专家模式</label>
+                    <input type="checkbox" id="expertMode" style="width:auto;margin-top:25px;" title="业务专家+边界专家+攻击专家分别生成，质量更高但耗时更长">
+                </div>
                 <div style="display:flex;align-items:flex-end;gap:10px;padding-bottom:10px;">
                     <button onclick="generate()" id="genBtn">生成测试用例</button>
                     <button class="btn-secondary btn-small" onclick="toggleConfig()">⚙ 配置</button>
+                    <button class="btn-small" style="background:#9c27b0;" onclick="optimizeAI()">🧠 一键优化</button>
                 </div>
             </div>
         </div>
@@ -239,6 +250,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 <button class="btn-small btn-secondary" onclick="extractRules()">📚 学习规则</button>
                 <span style="margin-left: auto; font-size:12px; color:#666;">
                     共 <span id="totalCases">0</span> 条用例
+                    <span id="qualityScore"> | 质量评分：<strong>--</strong></span>
                 </span>
             </div>
             <div id="result"></div>
@@ -363,19 +375,20 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             const example = document.getElementById('example').value.trim();
             const count = parseInt(document.getElementById('count').value) || 7;
             const reviewMode = document.getElementById('reviewMode').checked;
+            const expertMode = document.getElementById('expertMode').checked;
             const resultDiv = document.getElementById('result');
             const resultCard = document.getElementById('resultCard');
             const btn = document.getElementById('genBtn');
             if (!req) return alert('请填写测试需求描述');
             if (!example) return alert('请填写示例用例');
             btn.disabled = true;
-            resultDiv.innerHTML = '生成中...';
+            resultDiv.innerHTML = expertMode ? '三专家模式生成中...（业务专家 → 边界专家 → 攻击专家）' : '生成中...';
             resultCard.style.display = 'block';
             try {
                 const resp = await fetch('/api/generate', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({requirement: req, example: example, count: count, review_mode: reviewMode, session_id: currentSessionId})
+                    body: JSON.stringify({requirement: req, example: example, count: count, review_mode: reviewMode, expert_mode: expertMode, session_id: currentSessionId})
                 });
                 lastResult = await resp.json();
                 if (lastResult.success) {
@@ -391,6 +404,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     }));
                     renderCases();
                     document.getElementById('totalCases').textContent = casesWithLabels.length;
+                    // 显示质量评分
+                    if (lastResult.quality_score) {
+                        const qs = lastResult.quality_score;
+                        const levelHtml = `<span class="quality-badge quality-${qs.overall_level}">等级 ${qs.overall_level}</span>`;
+                        document.getElementById('qualityScore').innerHTML = ` | 质量评分：<strong>${qs.average_score}</strong>分 ${levelHtml}`;
+                    }
                 } else {
                     resultDiv.innerHTML = '<div class="error">' + lastResult.error + '</div>';
                 }
@@ -650,6 +669,31 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             a.download = 'test_cases_selected.csv';
             a.click();
         }
+        async function optimizeAI() {
+            if (!confirm('确定要运行一键优化吗？\n\n将自动：\n1. 清理低效率规则\n2. 从历史优质用例学习\n3. 更新规则库\n\n此过程需要调用 LLM，可能耗时几十秒。')) return;
+            const btn = document.querySelector('button[onclick="optimizeAI()"]');
+            const oldText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '优化中...';
+            try {
+                const resp = await fetch('/api/optimize', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({session_id: currentSessionId})
+                });
+                const result = await resp.json();
+                if (result.success) {
+                    alert(`✅ 优化完成！\n\n总规则数：${result.total_rules}\n新学习规则：${result.new_rules}\n淘汰低效率规则：${result.deprecated_rules}`);
+                } else {
+                    alert('优化失败：' + result.error);
+                }
+            } catch(e) {
+                alert('优化失败：' + e.message);
+            }
+            btn.disabled = false;
+            btn.textContent = oldText;
+        }
+
         window.addEventListener('click', function(e) {
             const feedbackModal = document.getElementById('feedbackModal');
             const editModal = document.getElementById('editModal');
@@ -798,7 +842,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             except:
                 count = config["generation"]["default_count"]
 
-            result = pipeline.run(requirement, example, count, review_mode=review_mode)
+            expert_mode = data.get("expert_mode", False)
+            result = pipeline.run(requirement, example, count, review_mode=review_mode, expert_mode=expert_mode)
 
             if result.get("success"):
                 new_session_id = session_id or new_session()
@@ -966,6 +1011,17 @@ class RequestHandler(BaseHTTPRequestHandler):
             })
             feedback_file.write_text(json.dumps(records[-500:], ensure_ascii=False, indent=2))
             self.send_json({"success": True})
+
+        elif self.path == "/api/optimize":
+            # 一键优化：清理低效率规则 + 从优质用例学习
+            try:
+                from src.memory.rule_manager import RuleManager
+                rule_manager = RuleManager(config, PROJECT_ROOT)
+                result = rule_manager.optimize_all_rules()
+                self.send_json({"success": True, **result})
+            except Exception as e:
+                self.send_json({"success": False, "error": str(e)}, 500)
+            return
 
         elif self.path == "/api/history/detail":
             data = self.read_json_body()

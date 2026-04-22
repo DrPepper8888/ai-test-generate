@@ -143,7 +143,7 @@ class QualityGate:
         return "\n".join(feedback_parts)
 
     def remove_internal_fields(self, cases: List[Dict]) -> List[Dict]:
-        """移除用户不应该看到的内部字段（如 _scenario）"""
+        """移除用户不应该看到的内部字段（如 _scenario、_quality_score）"""
         cleaned = []
         for case in cases:
             cleaned_case = {k: v for k, v in case.items() if not k.startswith("_")}
