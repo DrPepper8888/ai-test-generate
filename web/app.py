@@ -190,7 +190,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             </div>
         </div>
         <div class="card">
-            <label>示例用例（JSON 数组格式，或上传 CSV/JSON 文件）</label>
+            <label>示例用例（JSON 数组格式，或上传 CSV / JSON 文件）</label>
             <textarea id="example" placeholder='[{"id": "TC_001", "标题": "正确密码登录", "优先级": "高"}]'></textarea>
             <div style="margin-top:10px;">
                 <label>或上传文件：</label>
@@ -884,7 +884,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
             suffix = Path(filename).suffix.lower()
             if suffix not in (".csv", ".json"):
-                self.send_json({"success": False, "error": f"不支持格式：{suffix}，仅支持 csv/json"}, 400)
+                self.send_json({"success": False, "error": f"不支持格式：{suffix}，仅支持 .csv / .json（无第三方依赖）"}, 400)
                 return
 
             import tempfile
