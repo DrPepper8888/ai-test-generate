@@ -21,22 +21,25 @@ class ExpertGenerator:
         self.prompt_path = prompt_path
         self.validator = FormatValidator()
         self.rule_injector = RuleInjector()
-        self._prompt_template = None
+        self._base_prompt_cache = None  # 只缓存原始提示词，不缓存注入规则后的版本
 
     def load_prompt(self, rules: List[Dict] = None) -> str:
-        """加载专家提示词，并注入已学习的规则"""
-        if self._prompt_template:
-            return self._prompt_template
+        """加载专家提示词，并动态注入已学习的规则
+        注意：原始提示词会缓存，但规则是每次动态注入的，保证规则更新实时生效
+        """
+        if self._base_prompt_cache is None:
+            path = Path(self.prompt_path)
+            if path.exists():
+                self._base_prompt_cache = path.read_text(encoding="utf-8")
+            else:
+                raise FileNotFoundError(f"找不到专家提示词：{self.prompt_path}")
 
-        path = Path(self.prompt_path)
-        if path.exists():
-            base_prompt = path.read_text(encoding="utf-8")
-            if rules:
-                base_prompt = self.rule_injector.inject(base_prompt, rules)
-            self._prompt_template = base_prompt
-            return self._prompt_template
+        # 动态注入规则（每次调用都重新注入，保证规则更新实时生效）
+        prompt = self._base_prompt_cache
+        if rules:
+            prompt = self.rule_injector.inject(prompt, rules)
 
-        raise FileNotFoundError(f"找不到专家提示词：{self.prompt_path}")
+        return prompt
 
     def generate(
         self,
