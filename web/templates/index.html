@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 测试用例生成器</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0d0f14; --surface: #13161e; --surface2: #1a1e2a;
+      --border: #252936; --border-bright: #2f3448;
+      --accent: #4ade80; --accent-dim: #166534; --accent2: #60a5fa;
+      --warn: #fb923c; --danger: #f87171;
+      --text: #e2e8f0; --text-muted: #64748b; --text-dim: #94a3b8;
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Noto Sans SC', sans-serif;
+      --radius: 6px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; line-height: 1.6; min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      border-bottom: 1px solid var(--border); padding: 0 20px;
+      display: flex; align-items: center; gap: 12px; height: 52px;
+      background: var(--surface); position: sticky; top: 0; z-index: 200;
+    }
+    .logo { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-weight: 600; font-size: 14px; color: var(--accent); }
+    .logo-icon { width: 26px; height: 26px; background: var(--accent-dim); border: 1px solid var(--accent); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+    .header-sub { color: var(--text-muted); font-size: 11px; font-family: var(--mono); }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .pill { display: flex; align-items: center; gap: 5px; font-size: 11px; font-family: var(--mono); color: var(--text-muted); padding: 3px 9px; border: 1px solid var(--border); border-radius: 20px; cursor: pointer; transition: border-color .15s; user-select: none; }
+    .pill:hover { border-color: var(--border-bright); color: var(--text-dim); }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); transition: background .3s; }
+    .dot.ok { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+    .dot.error { background: var(--danger); }
+
+    /* ── Config drawer ── */
+    #cfg-drawer {
+      display: none; background: var(--surface2); border-bottom: 1px solid var(--border);
+      padding: 16px 20px; gap: 16px; flex-wrap: wrap; align-items: flex-end;
+    }
+    #cfg-drawer.open { display: flex; }
+    .cfg-group { display: flex; flex-direction: column; gap: 4px; }
+    .cfg-label { font-family: var(--mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
+    .cfg-input {
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--text); font-family: var(--mono); font-size: 12px;
+      padding: 6px 10px; width: 240px; transition: border-color .15s;
+    }
+    .cfg-input:focus { outline: none; border-color: var(--accent2); }
+    .cfg-input.wide { width: 320px; }
+    .cfg-input.key { width: 280px; }
+    .cfg-presets { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+    .preset { background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); font-family: var(--mono); font-size: 10px; padding: 2px 7px; cursor: pointer; transition: all .15s; }
+    .preset:hover { border-color: var(--accent2); color: var(--accent2); }
+    .cfg-hint { font-family: var(--mono); font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+    .btn-save-cfg {
+      padding: 7px 16px; background: var(--accent-dim); border: 1px solid var(--accent);
+      border-radius: var(--radius); color: var(--accent); font-family: var(--mono); font-size: 12px;
+      font-weight: 600; cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .btn-save-cfg:hover { background: var(--accent); color: #0d0f14; }
+    #cfg-saved { display: none; font-family: var(--mono); font-size: 11px; color: var(--accent); }
+
+    /* ── Layout ── */
+    .main { display: grid; grid-template-columns: 400px 1fr; height: calc(100vh - 52px); }
+
+    /* ── Left panel ── */
+    .panel-left { border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+    .panel-title { padding: 12px 18px 10px; font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--text-muted); letter-spacing: .08em; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+    .form-body { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+    .form-body::-webkit-scrollbar { width: 4px; }
+    .form-body::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 12px; font-weight: 500; color: var(--text-dim); display: flex; align-items: center; gap: 5px; }
+    .field label .req { color: var(--warn); font-size: 10px; }
+    .field label .hint { margin-left: auto; font-size: 11px; color: var(--text-muted); font-weight: 400; }
+    textarea, input[type="number"] {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--text); font-family: var(--mono); font-size: 12px; padding: 9px 11px;
+      transition: border-color .15s, box-shadow .15s; resize: vertical; width: 100%;
+    }
+    textarea:focus, input[type="number"]:focus { outline: none; border-color: var(--accent2); box-shadow: 0 0 0 2px rgba(96,165,250,.1); }
+    textarea::placeholder { color: var(--text-muted); }
+    #requirement { height: 96px; }
+    #example { height: 170px; }
+    .count-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+    .count-presets { display: flex; gap: 4px; }
+    .count-preset { background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); font-family: var(--mono); font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer; transition: all .15s; }
+    .count-preset:hover { border-color: var(--accent); color: var(--accent); }
+
+    .panel-footer { padding: 14px 18px; border-top: 1px solid var(--border); }
+    .btn-gen {
+      width: 100%; padding: 11px; background: var(--accent-dim); border: 1px solid var(--accent);
+      border-radius: var(--radius); color: var(--accent); font-family: var(--mono); font-size: 13px;
+      font-weight: 600; cursor: pointer; transition: all .15s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-gen:hover:not(:disabled) { background: var(--accent); color: #0d0f14; box-shadow: 0 0 20px rgba(74,222,128,.2); }
+    .btn-gen:disabled { opacity: .45; cursor: not-allowed; }
+    .spinner { width: 13px; height: 13px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Right panel ── */
+    .panel-right { display: flex; flex-direction: column; overflow: hidden; }
+    .result-toolbar { padding: 10px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: var(--surface); }
+    .result-meta { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
+    .result-meta strong { color: var(--accent); }
+    .btn-export { padding: 4px 11px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); font-family: var(--mono); font-size: 11px; cursor: pointer; transition: all .15s; }
+    .btn-export:hover:not(:disabled) { border-color: var(--accent2); color: var(--accent2); }
+    .btn-export:disabled { opacity: .3; cursor: not-allowed; }
+    .toolbar-right { margin-left: auto; display: flex; gap: 6px; }
+    .retry-badge { display: none; font-family: var(--mono); font-size: 10px; padding: 2px 7px; background: rgba(251,146,60,.1); border: 1px solid rgba(251,146,60,.3); border-radius: 10px; color: var(--warn); }
+
+    .result-tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--surface); padding: 0 18px; }
+    .tab-btn { padding: 7px 13px; font-family: var(--mono); font-size: 11px; color: var(--text-muted); background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: all .15s; margin-bottom: -1px; }
+    .tab-btn:hover { color: var(--text-dim); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .result-body { flex: 1; overflow: hidden; position: relative; }
+    .tab-content { display: none; height: 100%; overflow: auto; }
+    .tab-content.active { display: block; }
+    .tab-content::-webkit-scrollbar { width: 5px; height: 5px; }
+    .tab-content::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+
+    .empty-state { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--text-muted); }
+    .empty-icon { font-size: 36px; opacity: .3; }
+    .empty-state p { font-family: var(--mono); font-size: 12px; }
+
+    .error-banner { display: none; margin: 14px 18px; padding: 11px 14px; background: rgba(248,113,113,.07); border: 1px solid rgba(248,113,113,.3); border-radius: var(--radius); font-family: var(--mono); font-size: 12px; color: var(--danger); line-height: 1.7; white-space: pre-wrap; }
+
+    .progress-bar { height: 2px; background: var(--border); overflow: hidden; display: none; }
+    .progress-fill { height: 100%; background: var(--accent); animation: prog 2s ease-in-out infinite; transform-origin: left; }
+    @keyframes prog { 0%{transform:scaleX(0)} 50%{transform:scaleX(.7)} 100%{transform:scaleX(1)} }
+
+    /* Table */
+    .cases-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .cases-table th { background: var(--surface); color: var(--text-muted); font-family: var(--mono); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; padding: 9px 13px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0; z-index: 10; }
+    .cases-table td { padding: 9px 13px; border-bottom: 1px solid var(--border); vertical-align: top; max-width: 260px; color: var(--text-dim); line-height: 1.5; }
+    .cases-table tr:hover td { background: rgba(255,255,255,.02); }
+    .cases-table td.id-cell { font-family: var(--mono); font-size: 11px; color: var(--accent); white-space: nowrap; font-weight: 600; }
+
+    #tab-markdown, #tab-json { padding: 18px 22px; font-family: var(--mono); font-size: 12px; color: var(--text-dim); white-space: pre-wrap; line-height: 1.7; }
+
+    .feedback-row { padding: 7px 18px; border-top: 1px solid var(--border); display: none; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
+    .feedback-row.visible { display: flex; }
+    .rating-btn { padding: 2px 9px; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--text-muted); font-size: 12px; cursor: pointer; transition: all .15s; }
+    .rating-btn:hover { border-color: var(--accent); }
+
+    @media (max-width: 860px) {
+      .main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+      .panel-left { border-right: none; border-bottom: 1px solid var(--border); max-height: 48vh; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><div class="logo-icon">⚡</div>AI TestGen</div>
+  <span class="header-sub">测试用例生成器 v1.0</span>
+  <div class="header-right">
+    <div class="pill" onclick="checkHealth()" id="health-pill">
+      <div class="dot" id="status-dot"></div>
+      <span id="status-text">检测中...</span>
+    </div>
+    <div class="pill" onclick="toggleCfg()">⚙ LLM 配置</div>
+  </div>
+</header>
+
+<!-- Config Drawer -->
+<div id="cfg-drawer">
+  <div class="cfg-group">
+    <div class="cfg-label">Base URL</div>
+    <input class="cfg-input wide" id="cfg-url" placeholder="https://api.openai.com" />
+    <div class="cfg-presets">
+      <button class="preset" onclick="setPreset('openai')">OpenAI</button>
+      <button class="preset" onclick="setPreset('anthropic')">Anthropic</button>
+      <button class="preset" onclick="setPreset('ollama')">Ollama</button>
+      <button class="preset" onclick="setPreset('vllm')">vLLM</button>
+    </div>
+  </div>
+  <div class="cfg-group">
+    <div class="cfg-label">Model Name</div>
+    <input class="cfg-input" id="cfg-model" placeholder="gpt-4o-mini" />
+    <div class="cfg-hint" id="cfg-model-hint"></div>
+  </div>
+  <div class="cfg-group">
+    <div class="cfg-label">API Key <span style="color:var(--text-muted);font-size:9px">（内网无鉴权服务留空）</span></div>
+    <input class="cfg-input key" id="cfg-key" type="password" placeholder="sk-... 或 留空" autocomplete="off" />
+    <div class="cfg-hint">优先级：此处填写 &gt; 环境变量 LLM_API_KEY &gt; 留空</div>
+  </div>
+  <div class="cfg-group" style="justify-content:flex-end">
+    <button class="btn-save-cfg" onclick="saveCfg()">保存并生效</button>
+    <span id="cfg-saved">✓ 已保存</span>
+  </div>
+</div>
+
+<div class="main">
+  <!-- Left -->
+  <div class="panel-left">
+    <div class="panel-title">// 输入参数</div>
+    <div class="form-body">
+      <div class="field">
+        <label>测试需求描述 <span class="req">必填</span></label>
+        <textarea id="requirement" placeholder="描述要测试的功能、场景和关注点&#10;&#10;例：用户登录功能，需覆盖账号密码验证、连续失败锁定、&#10;记住密码、单点登录等场景。"></textarea>
+      </div>
+      <div class="field">
+        <label>示例用例 <span class="req">必填</span> <span class="hint">JSON 格式，AI 自动提取字段结构</span></label>
+        <textarea id="example" placeholder='{&#10;  "id": "TC_001",&#10;  "title": "正确账号密码登录成功",&#10;  "precondition": "用户已注册，账号状态正常",&#10;  "steps": "1. 打开登录页 2. 输入正确账号密码 3. 点击登录",&#10;  "expected": "登录成功，跳转首页",&#10;  "priority": "P0"&#10;}'></textarea>
+      </div>
+      <div class="field">
+        <label>生成数量 <span class="hint">3 — 20 条</span></label>
+        <div class="count-row">
+          <input type="number" id="count" value="7" min="3" max="20" />
+          <div class="count-presets">
+            <button class="count-preset" onclick="setCount(5)">5</button>
+            <button class="count-preset" onclick="setCount(10)">10</button>
+            <button class="count-preset" onclick="setCount(15)">15</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel-footer">
+      <button class="btn-gen" id="gen-btn" onclick="generate()">
+        <div class="spinner" id="spinner"></div>
+        <span id="gen-label">▶ 生成测试用例</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Right -->
+  <div class="panel-right">
+    <div class="progress-bar" id="progress-bar"><div class="progress-fill"></div></div>
+    <div class="result-toolbar">
+      <div class="result-meta" id="result-meta">等待生成...</div>
+      <span class="retry-badge" id="retry-badge"></span>
+      <div class="toolbar-right">
+        <button class="btn-export" id="btn-md" onclick="exportMd()" disabled>⬇ Markdown</button>
+        <button class="btn-export" id="btn-csv" onclick="exportCsv()" disabled>⬇ CSV</button>
+        <button class="btn-export" id="btn-json" onclick="exportJson()" disabled>⬇ JSON</button>
+      </div>
+    </div>
+    <div class="result-tabs">
+      <button class="tab-btn active" onclick="switchTab('table')">表格视图</button>
+      <button class="tab-btn" onclick="switchTab('markdown')">Markdown</button>
+      <button class="tab-btn" onclick="switchTab('json')">JSON</button>
+    </div>
+    <div class="result-body">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">📋</div>
+        <p>填写左侧参数后点击「生成」</p>
+        <p style="color:var(--text-muted);font-size:11px">先在 ⚙ LLM 配置 里设置服务地址和 Key</p>
+      </div>
+      <div class="error-banner" id="error-banner"></div>
+      <div class="tab-content active" id="tab-table">
+        <table class="cases-table" id="cases-table" style="display:none">
+          <thead id="table-head"></thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+      <div class="tab-content" id="tab-markdown"></div>
+      <div class="tab-content" id="tab-json"></div>
+    </div>
+    <div class="feedback-row" id="feedback-row">
+      <span>生成质量：</span>
+      <button class="rating-btn" onclick="submitFeedback(5)">👍 好</button>
+      <button class="rating-btn" onclick="submitFeedback(2)">👎 差</button>
+      <span id="feedback-thanks" style="display:none;color:var(--accent)">感谢反馈！</span>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentResult = null;
+
+const PRESETS = {
+  openai:    { url: 'https://api.openai.com',    hint: 'gpt-4o / gpt-4o-mini / gpt-3.5-turbo' },
+  anthropic: { url: 'https://api.anthropic.com', hint: 'claude-sonnet-4-5 / claude-haiku-4-5-20251001' },
+  ollama:    { url: 'http://localhost:11434',     hint: 'qwen2.5:7b / llama3 / mistral（无需 Key）' },
+  vllm:      { url: 'http://localhost:8000',      hint: 'Qwen/Qwen2.5-7B-Instruct（无需 Key）' },
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  checkHealth();
+  loadConfig();
+});
+
+// ── Health ─────────────────────────────────────────────────
+async function checkHealth() {
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-text');
+  dot.className = 'dot'; txt.textContent = '检测...';
+  try {
+    const r = await fetch('/api/health');
+    const d = await r.json();
+    if (d.status === 'ok') {
+      dot.className = 'dot ok';
+      txt.textContent = d.model + ' ✓';
+    } else {
+      dot.className = 'dot error';
+      txt.textContent = '服务未就绪';
+    }
+  } catch {
+    dot.className = 'dot error'; txt.textContent = '连接失败';
+  }
+}
+
+// ── Config drawer ───────────────────────────────────────────
+async function loadConfig() {
+  try {
+    const r = await fetch('/api/config');
+    const d = await r.json();
+    document.getElementById('cfg-url').value = d.llm.base_url || '';
+    document.getElementById('cfg-model').value = d.llm.model_name || '';
+    if (d.llm.api_key_set) {
+      document.getElementById('cfg-key').placeholder = d.llm.api_key_masked + '（已设置，留空保持不变）';
+    }
+    updateModelHint(d.llm.base_url);
+  } catch {}
+}
+
+function toggleCfg() {
+  document.getElementById('cfg-drawer').classList.toggle('open');
+}
+
+function setPreset(key) {
+  const p = PRESETS[key];
+  document.getElementById('cfg-url').value = p.url;
+  document.getElementById('cfg-model-hint').textContent = '常用模型：' + p.hint;
+}
+
+function updateModelHint(url) {
+  const u = (url || '').toLowerCase();
+  let hint = '';
+  if (u.includes('anthropic')) hint = '常用模型：claude-sonnet-4-5 / claude-haiku-4-5-20251001';
+  else if (u.includes('openai')) hint = '常用模型：gpt-4o / gpt-4o-mini';
+  else if (u.includes('11434')) hint = '常用模型：qwen2.5:7b / llama3（无需 Key）';
+  else if (u.includes('8000')) hint = '常用模型：Qwen/Qwen2.5-7B-Instruct（无需 Key）';
+  document.getElementById('cfg-model-hint').textContent = hint;
+}
+
+document.getElementById('cfg-url').addEventListener('input', e => updateModelHint(e.target.value));
+
+async function saveCfg() {
+  const url = document.getElementById('cfg-url').value.trim();
+  const model = document.getElementById('cfg-model').value.trim();
+  const key = document.getElementById('cfg-key').value.trim();
+  if (!url || !model) { alert('Base URL 和 Model Name 不能为空'); return; }
+  const body = { base_url: url, model_name: model };
+  if (key) body.api_key = key;  // 空则不覆盖（保留旧值）
+  const r = await fetch('/api/config', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const d = await r.json();
+  if (d.success) {
+    const s = document.getElementById('cfg-saved');
+    s.style.display = 'inline';
+    setTimeout(() => s.style.display = 'none', 2500);
+    document.getElementById('cfg-key').value = '';
+    document.getElementById('cfg-key').placeholder = 'sk-...（已更新）';
+    checkHealth();
+  }
+}
+
+// ── Count ───────────────────────────────────────────────────
+function setCount(n) { document.getElementById('count').value = n; }
+
+// ── Tabs ────────────────────────────────────────────────────
+function switchTab(name) {
+  const names = ['table', 'markdown', 'json'];
+  document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', names[i] === name));
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── Generate ────────────────────────────────────────────────
+async function generate() {
+  const requirement = document.getElementById('requirement').value.trim();
+  const example = document.getElementById('example').value.trim();
+  const count = parseInt(document.getElementById('count').value) || 7;
+  if (!requirement) { alert('请填写测试需求描述'); return; }
+  if (!example) { alert('请填写示例用例'); return; }
+
+  setLoading(true);
+  hideError();
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('feedback-row').classList.remove('visible');
+
+  try {
+    const r = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requirement, example, count }),
+    });
+    const data = await r.json();
+    if (!data.success) { showError(data.error || '生成失败'); return; }
+    currentResult = data;
+    renderResult(data);
+  } catch (e) {
+    showError('网络请求失败：' + e.message + '\n请检查服务是否正常运行');
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ── Render ──────────────────────────────────────────────────
+function renderResult(data) {
+  const cases = data.cases || [];
+  document.getElementById('result-meta').innerHTML = '生成完成：<strong>' + cases.length + ' 条</strong> 用例';
+  const badge = document.getElementById('retry-badge');
+  badge.style.display = data.retries > 0 ? 'inline' : 'none';
+  if (data.retries > 0) badge.textContent = '重试 ' + data.retries + ' 次';
+
+  if (cases.length > 0) {
+    const fields = Object.keys(cases[0]);
+    document.getElementById('table-head').innerHTML =
+      '<tr>' + fields.map(f => '<th>' + esc(f) + '</th>').join('') + '</tr>';
+    document.getElementById('table-body').innerHTML = cases.map(c =>
+      '<tr>' + fields.map((f, i) =>
+        '<td class="' + (i === 0 ? 'id-cell' : '') + '">' + esc(String(c[f] ?? '')) + '</td>'
+      ).join('') + '</tr>'
+    ).join('');
+    document.getElementById('cases-table').style.display = 'table';
+  }
+
+  document.getElementById('tab-markdown').textContent = data.markdown || '';
+  document.getElementById('tab-json').textContent = JSON.stringify(cases, null, 2);
+  ['btn-md', 'btn-csv', 'btn-json'].forEach(id => document.getElementById(id).disabled = false);
+  document.getElementById('feedback-row').classList.add('visible');
+  document.getElementById('feedback-thanks').style.display = 'none';
+}
+
+// ── Export ──────────────────────────────────────────────────
+async function exportMd() {
+  if (!currentResult) return;
+  const r = await fetch('/api/export/markdown', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({markdown: currentResult.markdown}) });
+  downloadBlob(await r.blob(), 'test_cases.md');
+}
+async function exportCsv() {
+  if (!currentResult) return;
+  const r = await fetch('/api/export/csv', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({csv: currentResult.csv}) });
+  downloadBlob(await r.blob(), 'test_cases.csv');
+}
+function exportJson() {
+  if (!currentResult) return;
+  downloadBlob(new Blob([JSON.stringify(currentResult.cases, null, 2)], {type:'application/json'}), 'test_cases.json');
+}
+function downloadBlob(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── Feedback ────────────────────────────────────────────────
+async function submitFeedback(rating) {
+  try {
+    await fetch('/api/feedback', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({rating}) });
+    document.getElementById('feedback-thanks').style.display = 'inline';
+  } catch {}
+}
+
+// ── Helpers ─────────────────────────────────────────────────
+function setLoading(on) {
+  document.getElementById('gen-btn').disabled = on;
+  document.getElementById('spinner').style.display = on ? 'block' : 'none';
+  document.getElementById('gen-label').textContent = on ? '生成中...' : '▶ 生成测试用例';
+  document.getElementById('progress-bar').style.display = on ? 'block' : 'none';
+}
+function showError(msg) {
+  const b = document.getElementById('error-banner');
+  b.textContent = msg; b.style.display = 'block';
+  document.getElementById('empty-state').style.display = 'none';
+}
+function hideError() { document.getElementById('error-banner').style.display = 'none'; }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
+</script>
+</body>
+</html>

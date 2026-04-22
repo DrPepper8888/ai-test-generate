@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"/c/Windows/System32/tar.exe\" --version)",
+      "Bash(rg *)",
+      "Bash(bash *)"
+    ]
+  }
+}

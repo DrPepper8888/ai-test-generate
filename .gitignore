@@ -1,0 +1,28 @@
+# 项目数据（本地数据，不推送到 GitHub）
+data/
+
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE 配置
+.vscode/
+.idea/
+
+# 临时文件
+*.bak
+*.tmp
+*.swp
+*.swo
+
+# 传输文件夹
+传输文件夹/
+transfer_folder/
+
+# 临时开发文件
+create_transfer.py
+make_transfer*.py
+test*.py
+_tmp*
