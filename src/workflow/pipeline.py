@@ -12,6 +12,7 @@ from src.api.llm_client import LLMClient
 from src.tools.formatter import FormatValidator
 from src.tools.exporter import Exporter
 from src.tools.deduplicator import deduplicate
+from src.tools.quality_gate import QualityGate
 from src.memory.memory_store import MemoryStore
 from src.memory.rule_injector import RuleInjector
 
@@ -38,6 +39,7 @@ class GenerationPipeline:
         self.llm = LLMClient.from_config(config)
         self.validator = FormatValidator()
         self.exporter = Exporter()
+        self.quality_gate = QualityGate()
 
         from pathlib import Path
         PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -120,8 +122,32 @@ class GenerationPipeline:
                 start_id += len(batch_cases)
 
             original_count = len(all_cases)
-            all_cases = deduplicate(all_cases, threshold=0.98)
+            all_cases = deduplicate(all_cases, scenario_type="general")
             deduplicated_count = original_count - len(all_cases)
+
+            # 质量门禁检查
+            quality_result = self.quality_gate.check_all(all_cases)
+            if not quality_result["passed"]:
+                # 如果有缺少场景，补充生成（最多重试1次）
+                missing_scenarios = quality_result["missing_scenarios"]
+                if missing_scenarios and retries < self.max_retries:
+                    feedback = self.quality_gate.build_retry_feedback(quality_result)
+                    supplementary_user_msg = (
+                        self._build_user_message(requirement, example, max(2, len(missing_scenarios) * 2), start_id)
+                        + "\n\n" + feedback
+                    )
+                    supplementary_cases, supplementary_retries = self._call_with_retry(
+                        system_prompt, supplementary_user_msg, expected_fields, start_id
+                    )
+                    retries += supplementary_retries
+                    all_cases.extend(supplementary_cases)
+                    start_id += len(supplementary_cases)
+
+                    # 再次去重
+                    all_cases = deduplicate(all_cases, scenario_type="general")
+
+            # 移除内部字段（_scenario）
+            all_cases = self.quality_gate.remove_internal_fields(all_cases)
 
             review_result = None
             if review_mode:
@@ -146,6 +172,7 @@ class GenerationPipeline:
                 "retries": retries,
                 "count": len(all_cases),
                 "deduplicated": deduplicated_count,
+                "quality_check": quality_result,
             }
             if review_result:
                 result["review"] = review_result
