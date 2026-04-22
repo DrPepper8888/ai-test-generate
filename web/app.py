@@ -216,6 +216,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     <button onclick="generate()" id="genBtn">生成测试用例</button>
                     <button class="btn-secondary btn-small" onclick="toggleConfig()">⚙ 配置</button>
                     <button class="btn-small" style="background:#9c27b0;" onclick="optimizeAI()">🧠 一键优化</button>
+                    <button class="btn-small" style="background:#ff9800;" onclick="openRuleManager()">📦 规则管理</button>
                 </div>
             </div>
         </div>
@@ -669,6 +670,77 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             a.download = 'test_cases_selected.csv';
             a.click();
         }
+        async function openRuleManager() {
+            const resp = await fetch('/api/rules/export');
+            const data = await resp.json();
+            const jsonStr = JSON.stringify(data.rules, null, 2);
+            
+            const html = `
+                <div style="margin-bottom:15px;">
+                    <h4>📊 规则库统计</h4>
+                    <p>总规则数：${data.total_count} | 活跃规则：${data.active_count}</p>
+                    <hr style="margin:15px 0;">
+                    
+                    <h4>📤 导出规则（分享给团队）</h4>
+                    <textarea id="exportRulesText" style="height:150px;margin-bottom:10px;font-size:12px;font-family:monospace;">${jsonStr}</textarea>
+                    <button class="btn-small btn-secondary" onclick="copyExportedRules()">📋 复制到剪贴板</button>
+                    <button class="btn-small btn-secondary" onclick="downloadRules()">💾 下载为文件</button>
+                    
+                    <hr style="margin:15px 0;">
+                    
+                    <h4>📥 导入团队规则</h4>
+                    <textarea id="importRulesText" style="height:150px;margin-bottom:10px;font-family:monospace;" placeholder="把别人分享的规则 JSON 粘贴到这里"></textarea>
+                    <button class="btn-small" style="background:#4caf50;" onclick="importRules()">✅ 导入并合并</button>
+                </div>
+            `;
+            
+            const oldContent = document.getElementById('ruleMgrContent');
+            if (oldContent) oldContent.remove();
+            
+            const div = document.createElement('div');
+            div.id = 'ruleMgrContent';
+            div.innerHTML = html;
+            document.querySelector('.container').prepend(div);
+        }
+        
+        async function copyExportedRules() {
+            const text = document.getElementById('exportRulesText').value;
+            await navigator.clipboard.writeText(text);
+            alert('✅ 已复制到剪贴板，直接发给同事就行！');
+        }
+        
+        function downloadRules() {
+            const text = document.getElementById('exportRulesText').value;
+            const blob = new Blob([text], {type: 'application/json;charset=utf-8'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'test-case-rules.json';
+            a.click();
+        }
+        
+        async function importRules() {
+            const text = document.getElementById('importRulesText').value.trim();
+            if (!text) return alert('请先粘贴要导入的规则 JSON');
+            
+            try {
+                const rules = JSON.parse(text);
+                const resp = await fetch('/api/rules/import', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({rules})
+                });
+                const result = await resp.json();
+                if (result.success) {
+                    alert(`✅ 导入成功！\n\n新增规则：${result.new_rules_added}\n合并已有规则：${result.existing_rules_merged}\n当前总规则数：${result.total_rules_now}`);
+                } else {
+                    alert('导入失败：' + result.error);
+                }
+            } catch(e) {
+                alert('JSON 解析失败，请检查格式是否正确');
+            }
+        }
+
         async function optimizeAI() {
             if (!confirm('确定要运行一键优化吗？\n\n将自动：\n1. 清理低效率规则\n2. 从历史优质用例学习\n3. 更新规则库\n\n此过程需要调用 LLM，可能耗时几十秒。')) return;
             const btn = document.querySelector('button[onclick="optimizeAI()"]');
@@ -1011,6 +1083,111 @@ class RequestHandler(BaseHTTPRequestHandler):
             })
             feedback_file.write_text(json.dumps(records[-500:], ensure_ascii=False, indent=2))
             self.send_json({"success": True})
+
+        elif self.path == "/api/rules/export":
+            # 导出所有规则（用于团队共享）
+            rules = memory_store.load_rules()
+            self.send_json({
+                "success": True,
+                "rules": rules,
+                "export_time": datetime.datetime.now().isoformat(),
+                "total_count": len(rules),
+                "active_count": len([r for r in rules if not r.get("is_deprecated", False)]),
+            })
+            return
+
+        elif self.path == "/api/rules/import":
+            # 导入团队共享规则（自动去重+合并统计）
+            data = self.read_json_body()
+            import_rules = data.get("rules", [])
+            
+            if not import_rules:
+                self.send_json({"success": False, "error": "没有要导入的规则"}, 400)
+                return
+
+            existing = memory_store.load_rules()
+            
+            # 合并逻辑：规则文本相同则合并统计，否则新增
+            rule_text_map = {r["rule_text"]: r for r in existing}
+            new_count = 0
+            merged_count = 0
+            
+            for r in import_rules:
+                if "rule_text" not in r:
+                    continue
+                rule_text = r["rule_text"]
+                if rule_text in rule_text_map:
+                    # 合并统计
+                    existing_rule = rule_text_map[rule_text]
+                    existing_rule["use_count"] = existing_rule.get("use_count", 0) + r.get("use_count", 1)
+                    existing_rule["effective_count"] = existing_rule.get("effective_count", 0) + r.get("effective_count", 0)
+                    merged_count += 1
+                else:
+                    # 新增规则，保留原统计但重置ID
+                    r["rule_id"] = f"RULE_{len(rule_text_map) + new_count + 1:04d}"
+                    existing.append(r)
+                    new_count += 1
+            
+            memory_store.save_rules(existing)
+            
+            self.send_json({
+                "success": True,
+                "new_rules_added": new_count,
+                "existing_rules_merged": merged_count,
+                "total_rules_now": len(existing),
+            })
+            return
+
+        elif self.path == "/api/rules/merge":
+            # 合并多个人的规则文件（团队管理员用）
+            data = self.read_json_body()
+            all_rule_lists = data.get("rule_lists", [])
+            
+            if len(all_rule_lists) < 2:
+                self.send_json({"success": False, "error": "至少需要两份规则才能合并"}, 400)
+                return
+
+            # 先把所有规则按文本聚合
+            merged_map = {}
+            for rule_list in all_rule_lists:
+                for r in rule_list:
+                    if "rule_text" not in r:
+                        continue
+                    rt = r["rule_text"]
+                    if rt not in merged_map:
+                        merged_map[rt] = {
+                            "rule_id": "",
+                            "rule_text": rt,
+                            "type": r.get("type", "general"),
+                            "level": r.get("level", "global"),
+                            "use_count": 0,
+                            "effective_count": 0,
+                            "source_count": 0,  # 多少人贡献了这条
+                        }
+                    # 累加统计
+                    merged_map[rt]["use_count"] += r.get("use_count", 1)
+                    merged_map[rt]["effective_count"] += r.get("effective_count", 0)
+                    merged_map[rt]["source_count"] += 1
+
+            # 重新分配ID
+            merged_rules = []
+            for i, rule in enumerate(merged_map.values()):
+                rule["rule_id"] = f"RULE_{i+1:04d}"
+                # 超过3个人都在用的规则，直接标记为优质
+                if rule["source_count"] >= 3:
+                    rule["level"] = "global"
+                merged_rules.append(rule)
+
+            # 按使用量排序
+            merged_rules.sort(key=lambda x: -x["use_count"])
+
+            self.send_json({
+                "success": True,
+                "merged_rules": merged_rules,
+                "total_rules": len(merged_rules),
+                "high_quality_rules": len([r for r in merged_rules if r["source_count"] >= 3]),
+            })
+            return
 
         elif self.path == "/api/optimize":
             # 一键优化：清理低效率规则 + 从优质用例学习
