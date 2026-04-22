@@ -14,6 +14,7 @@ from src.tools.formatter import FormatValidator
 from src.tools.exporter import Exporter
 from src.tools.deduplicator import deduplicate
 from src.tools.quality_gate import QualityGate
+from src.tools.prompt_builder import PromptBuilder
 from src.memory.memory_store import MemoryStore
 from src.memory.rule_injector import RuleInjector
 from src.workflow.expert_pipeline import ThreeExpertPipeline
@@ -43,10 +44,10 @@ class GenerationPipeline:
         self.exporter = Exporter()
         self.quality_gate = QualityGate()
 
-        from pathlib import Path
         PROJECT_ROOT = Path(__file__).parent.parent.parent
         self.memory_store = MemoryStore(PROJECT_ROOT / "data")
         self.rule_injector = RuleInjector()
+        self.prompt_builder = PromptBuilder(PROJECT_ROOT / "prompts")
 
         gen_cfg = config.get("generation", {})
         self.default_count = gen_cfg.get("default_count", 7)
@@ -54,7 +55,6 @@ class GenerationPipeline:
         self.batch_size = gen_cfg.get("batch_size", 20)
         self.max_retries = gen_cfg.get("max_retries", 2)
 
-        # 提示词路径（相对于项目根目录）
         self._prompt_template: Optional[str] = None
 
     # ------------------------------------------------------------------
@@ -200,38 +200,24 @@ class GenerationPipeline:
     # ------------------------------------------------------------------
 
     def _load_system_prompt(self) -> str:
-        """加载 prompts/system_prompt.md，并注入已学习的规则"""
+        """加载模块化提示词，并注入已学习的规则"""
         if self._prompt_template:
             return self._prompt_template
 
-        # 寻找 system_prompt.md（相对于项目根目录）
-        candidates = [
-            Path("prompts/system_prompt.md"),
-            Path(__file__).parent.parent.parent / "prompts" / "system_prompt.md",
-        ]
-        for path in candidates:
-            if path.exists():
-                base_prompt = path.read_text(encoding="utf-8")
-                # 注入规则
-                rules = self.memory_store.load_rules()
-                self._prompt_template = self.rule_injector.inject(base_prompt, rules)
-                return self._prompt_template
+        # 使用模块化提示词构建器
+        base_prompt = self.prompt_builder.build_base_prompt()
 
-        raise FileNotFoundError(
-            "找不到 prompts/system_prompt.md，请确认项目目录结构完整"
-        )
+        # 注入规则（取最有效的前5条）
+        rules = self.memory_store.get_effective_rules(top_k=5)
+        self._prompt_template = self.prompt_builder.inject_learned_rules(base_prompt, rules)
+
+        return self._prompt_template
 
     def _build_user_message(
         self, requirement: str, example: str, count: int, start_id: int
     ) -> str:
         """组装发给 LLM 的用户消息"""
-        id_hint = f"（ID 从 TC_{start_id:03d} 开始编号）" if start_id != 2 else ""
-        return (
-            f"【测试需求描述】\n{requirement}\n\n"
-            f"【示例用例】\n{example}\n\n"
-            f"【生成数量】\n{count} 条{id_hint}\n\n"
-            f"请严格按照示例用例的字段结构生成，输出纯 JSON 数组。"
-        )
+        return PromptBuilder.build_user_message(requirement, example, count, start_id)
 
     def _load_review_prompt(self) -> str:
         """加载评审提示词"""
