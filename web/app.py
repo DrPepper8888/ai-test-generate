@@ -208,19 +208,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     <label>启用评审</label>
                     <input type="checkbox" id="reviewMode" style="width:auto;margin-top:25px;">
                 </div>
-                <div>
-                    <label>三专家模式</label>
-                    <input type="checkbox" id="expertMode" style="width:auto;margin-top:25px;" title="业务专家+边界专家+攻击专家分别生成，质量更高但耗时更长">
-                </div>
                 <div style="display:flex;align-items:flex-end;gap:10px;padding-bottom:10px;">
-                    <button onclick="generate()" id="genBtn">生成测试用例</button>
-                    <button class="btn-secondary btn-small" onclick="toggleConfig()">⚙ 配置</button>
-                    <button class="btn-small" style="background:#9c27b0;" onclick="optimizeAI()">🧠 一键优化</button>
-                    <button class="btn-small" style="background:#ff9800;" onclick="openRuleManager()">📦 规则管理</button>
+                    <button onclick="generate()" id="genBtn" style="flex:1;padding:14px;font-size:16px;">生成测试用例</button>
+                    <button class="btn-secondary" style="padding:14px;" onclick="toggleConfig()">⚙ 配置</button>
+                </div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:-8px;">
+                    <button class="btn-small" style="background:#9c27b0;font-size:12px;" onclick="optimizeAI()">🧠 一键优化</button>
+                    <button class="btn-small" style="background:#ff9800;font-size:12px;" onclick="openRuleManager()">📦 规则管理</button>
                 </div>
             </div>
         </div>
         <div class="card config-panel" id="configPanel">
+            <h4 style="margin-bottom:15px;">基础配置</h4>
             <div class="row">
                 <div>
                     <label>Base URL</label>
@@ -241,6 +240,21 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 </div>
             </div>
             <div class="status" id="configStatus"></div>
+
+            <hr style="margin:20px 0;border:0;border-top:1px solid #eee;">
+
+            <h4 style="margin-bottom:15px;">⚡ 高级功能</h4>
+            <div style="margin-bottom:15px;padding:12px;background:#fafafa;border-radius:6px;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" id="expertMode">
+                    <div>
+                        <strong>三专家模式</strong>
+                        <div style="font-size:12px;color:#666;font-weight:normal;">
+                            业务专家 + 边界专家 + 攻击专家分别生成，质量更高但耗时约 3 倍
+                        </div>
+                    </div>
+                </label>
+            </div>
         </div>
         <div class="card" id="resultCard" style="display:none;">
             <div class="batch-actions">
