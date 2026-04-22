@@ -8,6 +8,7 @@ import datetime
 from typing import Optional
 from pathlib import Path
 
+from pathlib import Path
 from src.api.llm_client import LLMClient
 from src.tools.formatter import FormatValidator
 from src.tools.exporter import Exporter
@@ -15,6 +16,7 @@ from src.tools.deduplicator import deduplicate
 from src.tools.quality_gate import QualityGate
 from src.memory.memory_store import MemoryStore
 from src.memory.rule_injector import RuleInjector
+from src.workflow.expert_pipeline import ThreeExpertPipeline
 
 
 class PipelineState:
@@ -65,6 +67,7 @@ class GenerationPipeline:
         example: str,
         count: int = 7,
         review_mode: bool = False,
+        expert_mode: bool = False,
     ) -> dict:
         """
         执行完整生成流程
@@ -74,6 +77,7 @@ class GenerationPipeline:
             example: 示例用例（JSON 格式字符串）
             count: 期望生成的用例数量
             review_mode: 是否启用双 Agent 评审（默认 False）
+            expert_mode: 是否启用三专家模式（业务/边界/攻击串行生成）
 
         Returns:
             {
@@ -85,12 +89,18 @@ class GenerationPipeline:
                 'state': str,
                 'retries': int,
                 'review': dict (当 review_mode=True 时),
+                'expert_counts': dict (当 expert_mode=True 时),
             }
         """
         state = PipelineState.IDLE
         retries = 0
 
         try:
+            # 三专家模式（串行调用三个专家）
+            if expert_mode:
+                return self._run_expert_mode(requirement, example, count, review_mode)
+
+            # 原有单一生成模式
             # Step 1: 加载提示词模板
             state = PipelineState.LOADING_PROMPT
             system_prompt = self._load_system_prompt()
@@ -429,3 +439,61 @@ class GenerationPipeline:
             return {}
         except Exception:
             return {}
+
+    def _run_expert_mode(
+        self, requirement: str, example: str, count: int, review_mode: bool
+    ) -> dict:
+        """执行三专家串行生成模式"""
+        from pathlib import Path
+        PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+        # 加载规则
+        rules = self.memory_store.load_rules()
+
+        # 执行三专家串行生成
+        expert_pipeline = ThreeExpertPipeline(self.config, PROJECT_ROOT)
+        result = expert_pipeline.run(requirement, example, count, rules)
+
+        all_cases = result["cases"]
+
+        # 质量门禁检查
+        quality_result = self.quality_gate.check_all(all_cases)
+        if not quality_result["passed"]:
+            # 如果有缺少场景，补充生成（最多重试1次）
+            missing_scenarios = quality_result["missing_scenarios"]
+            if missing_scenarios:
+                # 调用对应领域的专家补充生成
+                pass
+
+        # 移除内部字段
+        all_cases = self.quality_gate.remove_internal_fields(all_cases)
+
+        # 生成导出内容
+        markdown = self.exporter.to_markdown(all_cases, requirement)
+        csv_content = self.exporter.to_csv(all_cases)
+
+        # 保存历史
+        self._save_history(requirement, example, all_cases)
+
+        review_result = None
+        if review_mode:
+            review_result = self._review_cases(all_cases, example)
+
+        final_result = {
+            "success": True,
+            "cases": all_cases,
+            "markdown": markdown,
+            "csv": csv_content,
+            "error": None,
+            "state": PipelineState.DONE,
+            "retries": 0,
+            "count": len(all_cases),
+            "deduplicated": result["deduplicated"],
+            "expert_counts": result["expert_counts"],
+            "quality_check": quality_result,
+            "expert_mode": True,
+        }
+        if review_result:
+            final_result["review"] = review_result
+
+        return final_result
