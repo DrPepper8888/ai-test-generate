@@ -1,13 +1,16 @@
 """
-规则注入器 - 将已学习规则和自定义规则注入到 system prompt
+规则注入器 - 将已学习规则注入到 system prompt
 
-完全使用 Python 标准库，无第三方依赖
+支持两种模式：
+1. 文件模式（推荐）：使用 RuleFileManager 渐进式加载
+2. 兼容模式：使用 MemoryStore 兼容旧代码
 """
 
 from typing import List, Optional
+from pathlib import Path
 
 from src.harness.models import Rule
-from src.harness.skill_loader import SkillLoader
+from src.harness.rule_file_manager import RuleFileManager
 
 
 SYSTEM_RULE_PREFIX = """
@@ -21,37 +24,57 @@ SYSTEM_RULE_SUFFIX = """
 
 
 class RuleInjector:
-    """规则注入器"""
+    """
+    规则注入器
 
-    def __init__(self, skill_path: Optional[str] = None):
+    支持两种模式：
+    1. 文件模式（默认）：使用文件管理器，渐进式加载
+    2. 兼容模式：使用旧版 MemoryStore
+    """
+
+    def __init__(
+        self,
+        rules_dir: Optional[str] = None,
+        use_file_mode: bool = True,
+    ):
         """
         初始化规则注入器
-        
+
         Args:
-            skill_path: 自定义规则文件路径，默认 prompts/skill.md
+            rules_dir: 规则文件目录，默认 data/rules
+            use_file_mode: 是否使用文件模式（推荐）
         """
-        self.skill_loader = SkillLoader(skill_path) if skill_path else SkillLoader()
+        if rules_dir is None:
+            rules_dir = Path("rules")
+        self.rules_dir = Path(rules_dir)
+
+        if use_file_mode:
+            self.file_manager = RuleFileManager(self.rules_dir)
+        else:
+            self.file_manager = None
 
     def inject(
         self,
         system_prompt: str,
-        rules: List[Rule],
+        rules: List[Rule] = None,
+        requirement: str = "",
         top_n: int = 5,
         include_skill: bool = True,
     ) -> str:
         """
         将规则注入到 system prompt
-        
+
         注入顺序：
         1. 自定义规则（skill.md）
-        2. 已学习规则（Harness 积累的规则）
-        
+        2. 已学习规则（渐进式加载）
+
         Args:
             system_prompt: 原始 system prompt
-            rules: 规则列表
-            top_n: 只注入前 N 条规则
+            rules: 规则列表（兼容模式使用）
+            requirement: 需求描述（用于关键词匹配）
+            top_n: 最大注入规则数
             include_skill: 是否包含自定义规则
-            
+
         Returns:
             注入规则后的 system prompt
         """
@@ -59,12 +82,32 @@ class RuleInjector:
 
         # 1. 注入自定义规则（优先）
         if include_skill:
-            skill_text = self.skill_loader.get_inject_text()
-            if skill_text:
-                injected_parts.append(skill_text)
+            skill_path = Path("prompts/skill.md")
+            if skill_path.exists():
+                skill_content = skill_path.read_text(encoding="utf-8")
+                # 过滤注释
+                lines = [l for l in skill_content.split("\n")
+                          if not l.strip().startswith("#")]
+                skill_text = "\n".join(lines).strip()
+                if skill_text:
+                    injected_parts.append(f"""
+---
+【自定义规则】（来自 skill.md）
+{skill_text}
+---
+""")
 
-        # 2. 注入已学习规则
-        if rules:
+        # 2. 注入已学习规则（文件模式：渐进式加载）
+        if self.file_manager:
+            # 渐进式加载相关规则
+            rules_text = self.file_manager.load_rules_for_context(
+                requirement=requirement,
+                limit=top_n,
+            )
+            if rules_text:
+                injected_parts.append(rules_text)
+        elif rules:
+            # 兼容模式
             sorted_rules = sorted(rules, key=lambda r: r.use_count, reverse=True)
             selected = sorted_rules[:top_n]
 
@@ -82,21 +125,31 @@ class RuleInjector:
         return injection + system_prompt
 
     @staticmethod
-    def get_display_text(rules: List[Rule]) -> str:
+    def get_display_text(rules: List[Rule] = None, rules_dir: str = None) -> str:
         """
         获取展示文本（用于前端显示）
-        
+
         Args:
-            rules: 规则列表
-            
+            rules: 规则列表（兼容模式）
+            rules_dir: 规则目录（文件模式）
+
         Returns:
             格式化后的展示文本
         """
+        if rules_dir:
+            manager = RuleFileManager(Path(rules_dir))
+            all_rules = manager.list_rules()
+            if not all_rules:
+                return "暂无已学习规则，继续生成用例来培养它吧！"
+            lines = []
+            for i, rule in enumerate(all_rules[:10], 1):
+                lines.append(f"{i}. {rule.content[:50]}...")
+            return "\n".join(lines)
+
         if not rules:
             return "暂无已学习规则，继续生成用例来培养它吧！"
 
         lines = []
         for i, rule in enumerate(rules, 1):
             lines.append(f"{i}. {rule.rule_text}")
-
         return "\n".join(lines)
