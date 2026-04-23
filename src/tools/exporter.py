@@ -5,7 +5,7 @@
 import json
 import csv
 import io
-from typing import Optional
+from typing import List, Optional
 
 
 class Exporter:
@@ -13,7 +13,7 @@ class Exporter:
 
     def to_markdown(
         self,
-        cases: list[dict],
+        cases: List[dict],
         requirement: str = "",
         example: str = "",
     ) -> str:
@@ -56,7 +56,7 @@ class Exporter:
         lines += ["", f"*生成工具：AI 测试用例生成器*"]
         return "\n".join(lines)
 
-    def to_csv(self, cases: list[dict]) -> str:
+    def to_csv(self, cases: List[dict]) -> str:
         """
         将测试用例列表导出为 CSV 格式（使用 Python 标准库 csv 模块）
 
@@ -75,15 +75,15 @@ class Exporter:
         # 添加 BOM 使 Excel 正确识别 UTF-8
         return "\ufeff" + output.getvalue()
 
-    def to_json(self, cases: list[dict], indent: int = 2) -> str:
+    def to_json(self, cases: List[dict], indent: int = 2) -> str:
         """
         将测试用例列表导出为 JSON 格式
         """
         return json.dumps(cases, ensure_ascii=False, indent=indent)
 
     def merge_with_example(
-        self, example_text: str, generated_cases: list[dict]
-    ) -> list[dict]:
+        self, example_text: str, generated_cases: List[dict]
+    ) -> List[dict]:
         """
         将示例用例（TC_001）与生成的用例合并为完整列表
 

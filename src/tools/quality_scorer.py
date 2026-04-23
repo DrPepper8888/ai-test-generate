@@ -28,8 +28,8 @@ class CaseQualityScorer:
                     "clarity": 0-20,     # 描述清晰度
                     "boundary": 0-20,    # 边界值覆盖
                 },
-                "issues": list[str],
-                "suggestions": list[str],
+                "issues": List[str],
+                "suggestions": List[str],
             }
         """
         issues = []
@@ -184,11 +184,11 @@ class BatchQualityScorer:
         """批量评分
         Returns:
             {
-                "cases": list[带评分的用例],
+                "cases": List[带评分的用例],
                 "average_score": float,
                 "level_counts": dict,
-                "overall_issues": list[str],
-                "overall_suggestions": list[str],
+                "overall_issues": List[str],
+                "overall_suggestions": List[str],
             }
         """
         if not cases:

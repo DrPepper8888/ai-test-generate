@@ -4,20 +4,17 @@
 """
 import json
 import re
-from typing import Any, Optional
+from typing import Any, Optional, List
 
 
 class FormatValidator:
     """校验并修复 LLM 生成的测试用例格式"""
 
-    def extract_json(self, raw_text: str) -> Optional[list]:
-        """
-        从 LLM 原始输出中提取 JSON 数组
-        处理常见情况：带代码围栏、有额外文本、转义问题
-        """
+    def extract_json(self, raw_text: str) -> Optional[List]:
+        """从 LLM 原始输出中提取 JSON 数组"""
         text = raw_text.strip()
 
-        # 策略 1：直接解析（模型输出纯净 JSON）
+        # 策略 1：直接解析
         try:
             data = json.loads(text)
             if isinstance(data, list):
@@ -26,7 +23,6 @@ class FormatValidator:
             pass
 
         # 策略 2：剥离 Markdown 代码围栏
-        # 匹配 ```json ... ``` 或 ``` ... ```
         fence_pattern = r"```(?:json)?\s*([\s\S]*?)\s*```"
         fence_match = re.search(fence_pattern, text, re.IGNORECASE)
         if fence_match:
@@ -51,13 +47,9 @@ class FormatValidator:
         return None
 
     def extract_json_object(self, raw_text: str) -> Optional[dict]:
-        """
-        从 LLM 原始输出中提取 JSON 对象
-        处理常见情况：带代码围栏、有额外文本、转义问题
-        """
+        """从 LLM 原始输出中提取 JSON 对象"""
         text = raw_text.strip()
 
-        # 策略 1：直接解析（模型输出纯净 JSON）
         try:
             data = json.loads(text)
             if isinstance(data, dict):
@@ -65,7 +57,6 @@ class FormatValidator:
         except json.JSONDecodeError:
             pass
 
-        # 策略 2：剥离 Markdown 代码围栏
         fence_pattern = r"```(?:json)?\s*([\s\S]*?)\s*```"
         fence_match = re.search(fence_pattern, text, re.IGNORECASE)
         if fence_match:
@@ -76,7 +67,6 @@ class FormatValidator:
             except json.JSONDecodeError:
                 pass
 
-        # 策略 3：找到第一个 { 和最后一个 } 之间的内容
         start = text.find("{")
         end = text.rfind("}")
         if start != -1 and end != -1 and end > start:
@@ -89,14 +79,10 @@ class FormatValidator:
 
         return None
 
-    def extract_fields_from_example(self, example_text: str) -> list[str]:
-        """
-        从示例用例文本中提取字段名列表
-        支持 JSON 格式和键值对格式（如 "字段名: 值"）
-        """
+    def extract_fields_from_example(self, example_text: str) -> List[str]:
+        """从示例用例文本中提取字段名列表"""
         example_text = example_text.strip()
 
-        # 尝试 JSON 解析
         try:
             data = json.loads(example_text)
             if isinstance(data, dict):
@@ -106,35 +92,25 @@ class FormatValidator:
         except (json.JSONDecodeError, TypeError):
             pass
 
-        # 尝试提取 "key: value" 或 "key：value" 格式的字段名
         patterns = [
-            r'^["\']?([^"\':\n]+)["\']?\s*[:：]',  # key: value
-            r'^["\']([^"\']+)["\']',               # "key"
+            r'^["\']?([^"\':\n]+)["\']?\s*[:：]',
+            r'^["\']([^"\']+)["\']',
         ]
         fields = []
         for line in example_text.splitlines():
-            line = line.strip().lstrip("{[,").rstrip("}],")
+            line = line.strip().lstrip("{[, ").rstrip("}], ")
             for pattern in patterns:
                 m = re.match(pattern, line)
                 if m:
-                    field_name = m.group(1).strip().strip('"\'')
+                    field_name = m.group(1).strip().strip("'\"")
                     if field_name and len(field_name) < 50:
                         fields.append(field_name)
                     break
 
         return fields
 
-    def validate(self, cases: list, expected_fields: list[str]) -> dict:
-        """
-        校验用例列表是否符合格式要求
-
-        Returns:
-            {
-                'valid': bool,
-                'errors': list[str],    # 错误描述列表
-                'missing_fields': list  # 缺失字段
-            }
-        """
+    def validate(self, cases: list, expected_fields: List[str]) -> dict:
+        """校验用例列表是否符合格式要求"""
         errors = []
         missing_fields_all = set()
 
@@ -149,7 +125,6 @@ class FormatValidator:
                 errors.append(f"第 {i+1} 条用例不是 JSON 对象")
                 continue
 
-            # 检查字段数量是否一致（只校验数量和存在性，不校验字段名拼写）
             if expected_fields:
                 case_fields = set(case.keys())
                 expected_set = set(expected_fields)
@@ -160,7 +135,6 @@ class FormatValidator:
                     missing_fields_all.update(missing)
                     errors.append(f"第 {i+1} 条用例缺少字段：{list(missing)}")
 
-                # 字段数量不一致也报错（允许一点容差）
                 if len(case_fields) != len(expected_set) and not missing:
                     errors.append(
                         f"第 {i+1} 条用例字段数量不匹配："
@@ -173,10 +147,8 @@ class FormatValidator:
             "missing_fields": list(missing_fields_all),
         }
 
-    def build_retry_feedback(self, validation_result: dict, expected_fields: list[str]) -> str:
-        """
-        构建反馈给 LLM 的重试提示
-        """
+    def build_retry_feedback(self, validation_result: dict, expected_fields: List[str]) -> str:
+        """构建反馈给 LLM 的重试提示"""
         lines = [
             "上一次的输出格式有误，请修正后重新生成：",
             "",
