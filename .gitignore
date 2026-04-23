@@ -26,3 +26,5 @@ create_transfer.py
 make_transfer*.py
 test*.py
 _tmp*
+config.json.local
+*.local

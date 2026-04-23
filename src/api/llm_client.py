@@ -3,13 +3,18 @@ LLM HTTP 调用封装 — 纯 Python 标准库实现
 支持：
   - OpenAI         https://api.openai.com
   - Anthropic      https://api.anthropic.com
-  - Azure OpenAI   https://<resource>.openai.azure.com
+  - 火山方舟        https://ark.cn-beijing.volces.com/api/coding
   - Ollama         http://localhost:11434   （无需 api_key）
   - vLLM / FastChat / 任意兼容 OpenAI Chat Completions 接口的服务
+
+特性：
+  - 自动过滤模型思考过程（<think>...</think>）
+  - 可配置 max_tokens 避免截断或浪费
 """
 
 import json
 import os
+import re
 import urllib.request
 import urllib.error
 from typing import Optional
@@ -28,10 +33,55 @@ def _detect_provider(base_url: str) -> str:
     return "openai_compat"
 
 
+# ── 思考过程过滤 ──────────────────────────────────────────────────
+THINKING_PATTERNS = [
+    # DeepSeek 风格
+    (r"<think>[\s\S]*?</think>", ""),
+    # Anthropic 风格
+    (r"<think>[\s\S]*?</think>", ""),
+    # 通用的 XML 标签风格
+    (r"<thinking>[\s\S]*?</thinking>", ""),
+    (r"<reasoning>[\s\S]*?</reasoning>", ""),
+    # Markdown 代码块包裹的思考
+    (r"```thinking[\s\S]*?```", ""),
+    (r"```think[\s\S]*?```", ""),
+]
+
+
+def strip_thinking_content(text: str) -> str:
+    """
+    过滤掉模型思考过程内容
+    
+    支持的格式：
+    - <think>...</think>
+    - <think>...</think>
+    - <thinking>...</thinking>
+    - <reasoning>...</reasoning>
+    
+    Args:
+        text: 模型原始输出
+        
+    Returns:
+        过滤后的文本
+    """
+    if not text:
+        return text
+    
+    result = text
+    for pattern, replacement in THINKING_PATTERNS:
+        result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
+    
+    # 清理多余空行
+    result = re.sub(r"\n{3,}", "\n\n", result)
+    
+    return result.strip()
+
+
 class LLMClient:
     """
     统一 LLM HTTP 客户端
     - 不依赖任何第三方库
+    - 自动过滤思考过程
     - api_key 优先级：config.json > 环境变量 LLM_API_KEY > 空（内网无鉴权服务）
     """
 
@@ -40,8 +90,8 @@ class LLMClient:
         base_url: str,
         model_name: str,
         api_key: str = "",
-        timeout: int = 60,
-        max_tokens: int = 4000,
+        timeout: int = 120,
+        max_tokens: int = 4096,
         temperature: float = 0.7,
     ):
         self.base_url = base_url.rstrip("/")
@@ -60,8 +110,8 @@ class LLMClient:
             base_url=llm.get("base_url", "http://localhost:11434"),
             model_name=llm.get("model_name", "qwen2.5:7b"),
             api_key=llm.get("api_key", ""),
-            timeout=llm.get("timeout", 60),
-            max_tokens=llm.get("max_tokens", 4000),
+            timeout=llm.get("timeout", 120),
+            max_tokens=llm.get("max_tokens", 4096),
             temperature=llm.get("temperature", 0.7),
         )
 
@@ -69,9 +119,12 @@ class LLMClient:
 
     def chat(self, system_prompt: str, user_message: str) -> str:
         if self.provider in ("anthropic", "volcengine_coding"):
-            return self._chat_anthropic(system_prompt, user_message)
+            raw = self._chat_anthropic(system_prompt, user_message)
         else:
-            return self._chat_openai_compat(system_prompt, user_message)
+            raw = self._chat_openai_compat(system_prompt, user_message)
+        
+        # 过滤思考过程
+        return strip_thinking_content(raw)
 
     def health_check(self) -> dict:
         try:
@@ -180,13 +233,4 @@ class LLMClient:
                 raise RuntimeError(f"API 返回错误（HTTP {e.code}）：{err_msg}") from e
 
         except urllib.error.URLError as e:
-            raise ConnectionError(
-                f"无法连接到 LLM 服务（{self.base_url}）。\n"
-                f"外网：检查网络和 API Key；内网：确认本地服务已启动。\n"
-                f"错误：{getattr(e, 'reason', e)}"
-            ) from e
-
-        except TimeoutError:
-            raise TimeoutError(
-                f"请求超时（>{self.timeout}s）。可在 config.json 增大 timeout。"
-            )
+            raise RuntimeError(f"网络连接失败：{e}\n请检查 API 地址是否正确：{self.base_url}") from e

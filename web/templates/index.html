@@ -202,6 +202,28 @@
   <div class="panel-left">
     <div class="panel-title">// 输入参数</div>
     <div class="form-body">
+      <!-- 生成模式选择 -->
+      <div class="field">
+        <label>生成模式</label>
+        <div style="display:flex;gap:12px;align-items:center;margin-top:2px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:var(--text-dim);font-weight:400">
+            <input type="radio" name="gen-mode" value="direct" checked style="accent-color:var(--accent)">直接生成
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:var(--text-dim);font-weight:400">
+            <input type="radio" name="gen-mode" value="points-first" style="accent-color:var(--accent)">先拆测试点
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:var(--text-dim);font-weight:400">
+            <input type="radio" name="gen-mode" value="incremental" style="accent-color:var(--accent)">分批生成
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:var(--text-dim);font-weight:400">
+            <input type="radio" name="gen-mode" value="queued" style="accent-color:var(--accent)">🔒 队列模式
+          </label>
+        </div>
+        <div id="queue-hint" style="display:none;margin-top:6px;font-family:var(--mono);font-size:10px;color:var(--text-muted)">
+          💡 任务队列：所有请求统一排队，自动串行执行，避免并发堵塞
+        </div>
+      </div>
+
       <div class="field">
         <label>测试需求描述 <span class="req">必填</span></label>
         <textarea id="requirement" placeholder="描述要测试的功能、场景和关注点&#10;&#10;例：用户登录功能，需覆盖账号密码验证、连续失败锁定、&#10;记住密码、单点登录等场景。"></textarea>
@@ -219,6 +241,64 @@
             <button class="count-preset" onclick="setCount(10)">10</button>
             <button class="count-preset" onclick="setCount(15)">15</button>
           </div>
+        </div>
+      </div>
+
+      <!-- 分批生成进度（显示中...） -->
+      <div id="incremental-progress" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px;margin-top:8px">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">
+          🔄 自动分批生成中，请稍候...
+        </div>
+      </div>
+
+      <!-- 测试点结果显示区 -->
+      <div class="field" id="testpoints-section" style="display:none">
+        <label>测试点清单 <span style="font-size:10px;color:var(--text-muted);font-weight:400">（AI 已拆解）</span></label>
+        <div id="testpoints-list" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px;max-height:180px;overflow-y:auto;font-family:var(--mono);font-size:11px;color:var(--text-dim);line-height:1.6"></div>
+        <button onclick="confirmPoints()" style="margin-top:8px;padding:6px 12px;background:transparent;border:1px solid var(--accent);border-radius:4px;color:var(--accent);font-family:var(--mono);font-size:11px;cursor:pointer;width:100%">✓ 确认后生成用例</button>
+      </div>
+
+      <!-- Harness 状态面板 -->
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-top:8px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+          <span style="font-size:14px">🦆</span>
+          <span style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-dim)">Harness 进化状态</span>
+        </div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-muted)">
+          已学习 <span id="rule-count" style="color:var(--accent);font-weight:600">-</span> 条规则
+        </div>
+        <div id="rules-preview" style="margin-top:8px;font-family:var(--mono);font-size:10px;color:var(--text-muted);max-height:60px;overflow:hidden"></div>
+      </div>
+
+      <!-- 自定义规则面板 -->
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-top:8px" id="skill-panel">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+          <span style="font-size:14px">📋</span>
+          <span style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-dim)">自定义规则</span>
+          <span id="skill-status" style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text-muted)">加载中...</span>
+        </div>
+        <div id="skill-preview" style="font-family:var(--mono);font-size:10px;color:var(--text-muted);max-height:40px;overflow:hidden"></div>
+        <button onclick="openSkillEditor()" style="margin-top:8px;padding:4px 10px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text-muted);font-family:var(--mono);font-size:10px;cursor:pointer;width:100%">编辑规则</button>
+      </div>
+    </div>
+
+    <!-- 自定义规则编辑 Modal -->
+    <div id="skill-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;width:600px;max-width:90vw;max-height:80vh;display:flex;flex-direction:column">
+        <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+          <span style="font-size:16px">📋</span>
+          <span style="font-family:var(--mono);font-size:13px;font-weight:600">自定义测试规则</span>
+          <button onclick="closeSkillEditor()" style="margin-left:auto;background:transparent;border:none;color:var(--text-muted);font-size:16px;cursor:pointer">×</button>
+        </div>
+        <div style="padding:16px;flex:1;overflow:auto">
+          <textarea id="skill-editor" style="width:100%;height:300px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:12px;padding:10px;resize:vertical"></textarea>
+          <div style="margin-top:8px;font-family:var(--mono);font-size:10px;color:var(--text-muted)">
+            💡 以 <code style="color:var(--accent)">#</code> 开头的行是注释，不会被注入
+          </div>
+        </div>
+        <div style="padding:16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
+          <button onclick="closeSkillEditor()" style="padding:6px 14px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text-muted);font-family:var(--mono);font-size:12px;cursor:pointer">取消</button>
+          <button onclick="saveSkill()" style="padding:6px 14px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:4px;color:var(--accent);font-family:var(--mono);font-size:12px;font-weight:600;cursor:pointer">保存</button>
         </div>
       </div>
     </div>
@@ -381,13 +461,39 @@ async function generate() {
   const requirement = document.getElementById('requirement').value.trim();
   const example = document.getElementById('example').value.trim();
   const count = parseInt(document.getElementById('count').value) || 7;
+  const mode = document.querySelector('input[name="gen-mode"]:checked').value;
+
   if (!requirement) { alert('请填写测试需求描述'); return; }
   if (!example) { alert('请填写示例用例'); return; }
 
+  // 先拆测试点模式
+  if (mode === 'points-first') {
+    await generatePointsFirst(requirement, example);
+    return;
+  }
+
+  // 分批生成模式（对用户透明，自动分批避免截断）
+  if (mode === 'incremental') {
+    document.getElementById('testpoints-section').style.display = 'none';
+    document.getElementById('gen-label').textContent = '自动分批生成中...';
+    await generateIncremental(requirement, example, count);
+    return;
+  }
+
+  // 队列模式（多人同时使用时自动排队）
+  if (mode === 'queued') {
+    document.getElementById('testpoints-section').style.display = 'none';
+    await generateWithQueue(requirement, example, count);
+    return;
+  }
+
+  // 直接生成模式（原有逻辑）
   setLoading(true);
   hideError();
   document.getElementById('empty-state').style.display = 'none';
   document.getElementById('feedback-row').classList.remove('visible');
+  // 隐藏分批进度
+  document.getElementById('incremental-progress').style.display = 'none';
 
   try {
     const r = await fetch('/api/generate', {
@@ -399,12 +505,343 @@ async function generate() {
     if (!data.success) { showError(data.error || '生成失败'); return; }
     currentResult = data;
     renderResult(data);
+    loadHarnessStatus(); // 更新 Harness 状态
   } catch (e) {
     showError('网络请求失败：' + e.message + '\n请检查服务是否正常运行');
   } finally {
     setLoading(false);
   }
 }
+
+// ── 测试点拆解模式 ─────────────────────────────────────────
+let currentTestPoints = null;
+
+async function generatePointsFirst(requirement, example) {
+  setLoading(true);
+  hideError();
+  document.getElementById('empty-state').style.display = 'none';
+
+  try {
+    // 调用测试点拆解 API
+    const r = await fetch('/api/generate-points', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requirement, example }),
+    });
+    const data = await r.json();
+
+    if (!data.success) {
+      showError(data.error || '测试点拆解失败');
+      return;
+    }
+
+    currentTestPoints = data.points;
+
+    // 显示测试点结果
+    const list = document.getElementById('testpoints-list');
+    const categories = data.categories || {};
+    let html = `<div style="color:var(--accent);margin-bottom:8px">${data.summary}</div>`;
+    
+    for (const [cat, num] of Object.entries(categories)) {
+      html += `<div style="margin:4px 0"><span style="color:var(--accent2)">${cat}:</span> ${num}个</div>`;
+    }
+    
+    html += '<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
+    data.points.slice(0, 5).forEach(p => {
+      html += `<div style="margin:4px 0"><span style="color:var(--warn)">[${p.risk_level}]</span> ${p.title}</div>`;
+    });
+    if (data.points.length > 5) {
+      html += `<div style="color:var(--text-muted)">...还有${data.points.length - 5}个</div>`;
+    }
+    html += '</div>';
+    
+    list.innerHTML = html;
+    document.getElementById('testpoints-section').style.display = 'block';
+    document.getElementById('gen-label').textContent = '✓ 测试点已拆解，确认后生成';
+
+  } catch (e) {
+    showError('测试点拆解失败：' + e.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function confirmPoints() {
+  if (!currentTestPoints) return;
+  
+  const requirement = document.getElementById('requirement').value.trim();
+  const example = document.getElementById('example').value.trim();
+  const count = parseInt(document.getElementById('count').value) || 7;
+
+  setLoading(true);
+  
+  // 将测试点转为提示信息追加到需求中
+  const pointsHint = '\n\n【已拆解测试点】\n' + 
+    currentTestPoints.map(p => `- [${p.risk_level}] ${p.category}: ${p.title}`).join('\n');
+
+  try {
+    const r = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        requirement: requirement + pointsHint, 
+        example, 
+        count 
+      }),
+    });
+    const data = await r.json();
+    if (!data.success) { showError(data.error || '生成失败'); return; }
+    currentResult = data;
+    renderResult(data);
+    loadHarnessStatus();
+
+    // 隐藏测试点区域
+    document.getElementById('testpoints-section').style.display = 'none';
+    document.getElementById('gen-label').textContent = '▶ 生成测试用例';
+    currentTestPoints = null;
+
+  } catch (e) {
+    showError('生成失败：' + e.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ── 分批生成模式（对用户透明）──────────────────────────────────
+async function generateIncremental(requirement, example, targetCount) {
+  setLoading(true);
+  hideError();
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('feedback-row').classList.remove('visible');
+
+  try {
+    const r = await fetch('/api/generate/incremental', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requirement,
+        example,
+        target_count: targetCount,
+        batch_size: 7
+      })
+    });
+
+    const data = await r.json();
+
+    if (!data.success) {
+      showError(data.error || '生成失败');
+      return;
+    }
+
+    // 显示结果
+    currentResult = { cases: data.cases };
+    renderResult(data);
+    
+    // 显示分批信息
+    if (data.batch_count > 1) {
+      document.getElementById('result-meta').innerHTML += 
+        ` <span style="color:var(--text-muted);font-size:10px">（自动分 ${data.batch_count} 批生成）</span>`;
+    }
+    
+    loadHarnessStatus();
+
+  } catch (e) {
+    showError('生成失败：' + e.message);
+  } finally {
+    setLoading(false);
+    document.getElementById('gen-label').textContent = '▶ 生成测试用例';
+  }
+}
+
+// ── Harness 状态加载 ────────────────────────────────────────
+async function loadHarnessStatus() {
+  try {
+    const r = await fetch('/api/rules');
+    const data = await r.json();
+    if (data.success && data.rules) {
+      document.getElementById('rule-count').textContent = data.rules.length;
+      const preview = document.getElementById('rules-preview');
+      if (data.rules.length > 0) {
+        preview.innerHTML = data.rules.slice(0, 3).map((rule, i) => 
+          `<div style="margin:2px 0"><span style="color:var(--accent)">${i+1}.</span> ${rule.text.substring(0, 40)}${rule.text.length > 40 ? '...' : ''}</div>`
+        ).join('');
+        if (data.rules.length > 3) {
+          preview.innerHTML += `<div style="color:var(--text-muted)">+${data.rules.length - 3} more...</div>`;
+        }
+      } else {
+        preview.innerHTML = '<div style="color:var(--text-muted)">暂无规则，继续使用来培养它吧！</div>';
+      }
+    }
+  } catch {}
+}
+
+// ── 自定义规则管理 ──────────────────────────────────────────
+async function loadSkillStatus() {
+  try {
+    const r = await fetch('/api/skill/load');
+    const data = await r.json();
+    const status = document.getElementById('skill-status');
+    const preview = document.getElementById('skill-preview');
+    
+    if (data.success) {
+      if (data.has_skill && data.content) {
+        status.textContent = '✓ 已启用';
+        status.style.color = 'var(--accent)';
+        // 显示前两行预览
+        const lines = data.content.split('\n').filter(l => l.trim() && !l.startsWith('#'));
+        preview.innerHTML = lines.slice(0, 2).map(l => 
+          `<div style="margin:2px 0">${esc(l.substring(0, 60))}${l.length > 60 ? '...' : ''}</div>`
+        ).join('');
+      } else {
+        status.textContent = '未设置';
+        status.style.color = 'var(--text-muted)';
+        preview.innerHTML = '<div style="color:var(--text-muted)">点击"编辑规则"创建你的测试规则</div>';
+      }
+    }
+  } catch {
+    document.getElementById('skill-status').textContent = '加载失败';
+  }
+}
+
+async function openSkillEditor() {
+  try {
+    const r = await fetch('/api/skill/load');
+    const data = await r.json();
+    if (data.success) {
+      document.getElementById('skill-editor').value = data.content || getDefaultSkillTemplate();
+      document.getElementById('skill-modal').style.display = 'flex';
+    }
+  } catch {
+    alert('加载规则失败');
+  }
+}
+
+function closeSkillEditor() {
+  document.getElementById('skill-modal').style.display = 'none';
+}
+
+async function saveSkill() {
+  const content = document.getElementById('skill-editor').value;
+  try {
+    const r = await fetch('/api/skill/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content })
+    });
+    const data = await r.json();
+    if (data.success) {
+      closeSkillEditor();
+      loadSkillStatus();
+      alert('规则已保存！下次生成时会自动应用。');
+    } else {
+      alert('保存失败：' + (data.error || '未知错误'));
+    }
+  } catch {
+    alert('保存失败');
+  }
+}
+
+function getDefaultSkillTemplate() {
+  return `# 测试规则模板
+
+你可以在这里定义项目专属的测试用例编写规则。
+
+## 示例规则格式
+
+\`\`\`markdown
+# 测试用例必须包含的字段
+1. ID：用例编号（格式：TC_XXX）
+2. 标题：用例名称
+3. 前置条件：必要的初始状态
+4. 测试步骤：清晰的执行步骤
+5. 预期结果：明确的可验证结果
+6. 优先级：P0/P1/P2
+
+# 命名规范
+- P0：核心功能，阻塞性缺陷
+- P1：重要功能，非阻塞性缺陷
+- P2：边缘场景
+\`\`\`
+
+## 提示
+
+- 以 # 开头的行是注释，不会被注入
+- 代码块内的内容会被保留`;
+}
+
+// 页面加载时获取 Harness 状态和规则状态
+document.addEventListener('DOMContentLoaded', function() {
+  loadHarnessStatus();
+  loadSkillStatus();
+});
+
+
+// ── 队列生成模式（任务驱动）────────────────────────────────
+let currentTaskId = null;
+
+async function generateWithQueue(requirement, example, count) {
+  setLoading(true);
+  hideError();
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('feedback-row').classList.remove('visible');
+  
+  try {
+    // 1. 先添加工任务
+    const addResp = await fetch('/api/queue/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const addData = await addResp.json();
+    
+    if (!addData.success) {
+      showError('加入队列失败：' + addData.error);
+      return;
+    }
+    
+    currentTaskId = addData.task_id;
+    
+    // 2. 显示排队状态
+    if (addData.position > 1) {
+      document.getElementById('gen-label').textContent = 
+        \`🔒 排队中（队列位置：第 \${addData.position} 位）...\`;
+    } else {
+      document.getElementById('gen-label').textContent = '🔒 队列模式生成中...';
+    }
+    
+    // 3. 发送生成请求（后端会自动排队）
+    const r = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requirement, example, count, use_queue: true }),
+    });
+    const data = await r.json();
+    
+    if (!data.success) { showError(data.error || '生成失败'); return; }
+    currentResult = data;
+    renderResult(data);
+    loadHarnessStatus();
+    
+  } catch (e) {
+    showError('生成失败：' + e.message);
+  } finally {
+    setLoading(false);
+    currentTaskId = null;
+    document.getElementById('gen-label').textContent = '▶ 生成测试用例';
+  }
+}
+
+// 监听模式切换
+document.querySelectorAll('input[name="gen-mode"]').forEach(radio => {
+  radio.addEventListener('change', function() {
+    const queueHint = document.getElementById('queue-hint');
+    if (this.value === 'queued') {
+      queueHint.style.display = 'block';
+    } else {
+      queueHint.style.display = 'none';
+    }
+  });
+});
 
 // ── Render ──────────────────────────────────────────────────
 function renderResult(data) {

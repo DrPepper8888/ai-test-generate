@@ -872,6 +872,49 @@ class RequestHandler(BaseHTTPRequestHandler):
             offset = int(self.headers.get("X-History-Offset", "0"))
             records = pipeline.get_history(limit, offset)
             self.send_json({"success": True, "records": records})
+
+        elif self.path == "/api/queue/status":
+            """获取队列状态"""
+            try:
+                from src.api.request_queue import TaskQueue
+                status = TaskQueue().get_status()
+                self.send_json({"success": True, **status})
+            except Exception as e:
+                self.send_json({"success": False, "error": str(e)}, 500)
+            return
+
+        elif self.path == "/api/queue/add":
+            """添加工任务"""
+            try:
+                from src.api.request_queue import TaskQueue
+                queue = TaskQueue()
+                client_ip = self.client_address[0] if hasattr(self, 'client_address') else "unknown"
+                request = queue.add_task(client_ip)
+                self.send_json({
+                    "success": True,
+                    "request_id": task.task_id,
+                    "position": task.position,
+                    "message": f"队列位置：第 {task.position} 位"
+                })
+            except Exception as e:
+                self.send_json({"success": False, "error": str(e)}, 500)
+            return
+
+        elif self.path == "/api/queue/check":
+            """检查排队状态"""
+            try:
+                data = self.read_json_body()
+                request_id = data.get("request_id", "")
+                from src.api.request_queue import TaskQueue
+                status = TaskQueue().get_task_status(request_id)
+                if status:
+                    self.send_json({"success": True, **status})
+                else:
+                    self.send_json({"success": False, "error": "任务不存在或已完成"}, 404)
+            except Exception as e:
+                self.send_json({"success": False, "error": str(e)}, 500)
+            return
+
         else:
             self.send_json({"error": "Not Found"}, 404)
 
@@ -915,6 +958,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             count = data.get("count", config["generation"]["default_count"])
             review_mode = data.get("review_mode", False)
             session_id = data.get("session_id", "")
+            use_queue = data.get("use_queue", False)  # 是否启用队列
 
             if not requirement:
                 self.send_json({"success": False, "error": "请填写测试需求描述"}, 400)
@@ -928,20 +972,34 @@ class RequestHandler(BaseHTTPRequestHandler):
             except:
                 count = config["generation"]["default_count"]
 
-            expert_mode = data.get("expert_mode", False)
-            result = pipeline.run(requirement, example, count, review_mode=review_mode, expert_mode=expert_mode)
+            try:
+                if use_queue:
+                    # 队列模式
+                    from src.api.request_queue import TaskQueue, QueueContext
+                    queue = TaskQueue()
+                    client_ip = self.client_address[0] if hasattr(self, 'client_address') else "unknown"
+                    
+                    with QueueContext(queue, client_ip) as request:
+                        result = pipeline.run(requirement, example, count, review_mode=review_mode)
+                else:
+                    # 普通模式
+                    expert_mode = data.get("expert_mode", False)
+                    result = pipeline.run(requirement, example, count, review_mode=review_mode, expert_mode=expert_mode)
 
-            if result.get("success"):
-                new_session_id = session_id or new_session()
-                if not get_session(new_session_id):
-                    new_session_id = new_session()
-                session = get_session(new_session_id)
-                session["cases"] = result["cases"]
-                session["labels"] = {}
-                save_session_to_file(new_session_id)
-                result["session_id"] = new_session_id
+                if result.get("success"):
+                    new_session_id = session_id or new_session()
+                    if not get_session(new_session_id):
+                        new_session_id = new_session()
+                    session = get_session(new_session_id)
+                    session["cases"] = result["cases"]
+                    session["labels"] = {}
+                    save_session_to_file(new_session_id)
+                    result["session_id"] = new_session_id
 
-            self.send_json(result)
+                self.send_json(result)
+                
+            except Exception as e:
+                self.send_json({"success": False, "error": str(e)}, 500)
 
         elif self.path == "/api/generate-single":
             data = self.read_json_body()
@@ -1098,6 +1156,60 @@ class RequestHandler(BaseHTTPRequestHandler):
             feedback_file.write_text(json.dumps(records[-500:], ensure_ascii=False, indent=2))
             self.send_json({"success": True})
 
+        elif self.path == "/api/skill/load":
+            # 加载自定义规则
+            from src.harness.skill_loader import SkillLoader
+            skill_path = PROJECT_ROOT / "prompts" / "skill.md"
+            loader = SkillLoader(skill_path)
+            content = loader.load()
+            self.send_json({
+                "success": True,
+                "content": content or "",
+                "has_skill": content is not None
+            })
+            return
+
+        elif self.path == "/api/skill/save":
+            # 保存自定义规则
+            data = self.read_json_body()
+            content = data.get("content", "")
+            skill_path = PROJECT_ROOT / "prompts" / "skill.md"
+            try:
+                skill_path.write_text(content, encoding="utf-8")
+                self.send_json({"success": True, "message": "规则已保存"})
+            except Exception as e:
+                self.send_json({"success": False, "error": str(e)}, 500)
+            return
+
+        elif self.path == "/api/rules":
+            # 获取已学习规则（半透明模式）
+            from src.harness.memory_store import MemoryStore
+            store = MemoryStore(PROJECT_ROOT / "data")
+            rules = store.get_rules_for_display(limit=20)
+            self.send_json({
+                "success": True,
+                "rules": rules,
+                "total_count": len(rules)
+            })
+            return
+
+        elif self.path == "/api/generate-points":
+            # 测试点拆解
+            data = self.read_json_body()
+            requirement = data.get("requirement", "")
+            example = data.get("example")
+
+            if not requirement:
+                self.send_json({"success": False, "error": "需求不能为空"}, 400)
+                return
+
+            from src.workflow.testpoints_pipeline import TestPointsPipeline
+            tp_pipeline = TestPointsPipeline(config)
+            result = tp_pipeline.run(requirement, example)
+
+            self.send_json(result)
+            return
+
         elif self.path == "/api/rules/export":
             # 导出所有规则（用于团队共享）
             rules = memory_store.load_rules()
@@ -1247,31 +1359,90 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(content.encode("utf-8-sig"))
 
+        elif self.path == "/api/generate/incremental":
+            """自动分批生成接口 - 对用户透明，自动规避 max_tokens 限制"""
+            data = self.read_json_body()
+            requirement = data.get("requirement", "")
+            example = data.get("example", "")
+            target_count = data.get("target_count", 20)
+            batch_size = data.get("batch_size", 7)
+
+            if not requirement:
+                self.send_json({"success": False, "error": "需求不能为空"}, 400)
+                return
+
+            try:
+                from src.workflow.incremental_pipeline import IncrementalPipeline
+
+                inc_pipeline = IncrementalPipeline(config)
+                
+                # 自动分批生成，用户无感知
+                result = inc_pipeline.generate(
+                    requirement, example, target_count, batch_size
+                )
+                
+                self.send_json({
+                    "success": result["success"],
+                    "cases": result["cases"],
+                    "batch_count": result["batch_count"],
+                    "total_generated": result["total_generated"],
+                    "error": result.get("error")
+                })
+
+            except Exception as e:
+                self.send_json({
+                    "success": False,
+                    "error": str(e),
+                    "cases": [],
+                    "batch_count": 0,
+                    "total_generated": 0
+                }, 500)
+            return
+
+
+        elif self.path == "/api/queue/status":
+            """获取队列状态"""
+            try:
+                from src.api.request_queue import TaskQueue
+                status = TaskQueue().get_status()
+                self.send_json({"success": True, **status})
+            except Exception as e:
+                self.send_json({"success": False, "error": str(e)}, 500)
+            return
+
+        elif self.path == "/api/queue/add":
+            """添加工任务"""
+            try:
+                from src.api.request_queue import TaskQueue
+                queue = TaskQueue()
+                client_ip = self.client_address[0] if hasattr(self, 'client_address') else "unknown"
+                request = queue.add_task(client_ip)
+                self.send_json({
+                    "success": True,
+                    "request_id": task.task_id,
+                    "position": task.position,
+                    "message": f"队列位置：第 {task.position} 位"
+                })
+            except Exception as e:
+                self.send_json({"success": False, "error": str(e)}, 500)
+            return
+
+        elif self.path == "/api/queue/check":
+            """检查排队状态"""
+            try:
+                data = self.read_json_body()
+                request_id = data.get("request_id", "")
+                from src.api.request_queue import TaskQueue
+                status = TaskQueue().get_task_status(request_id)
+                if status:
+                    self.send_json({"success": True, **status})
+                else:
+                    self.send_json({"success": False, "error": "任务不存在或已完成"}, 404)
+            except Exception as e:
+                self.send_json({"success": False, "error": str(e)}, 500)
+            return
+
         else:
             self.send_json({"error": "Not Found"}, 404)
 
 
-class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
-    daemon_threads = True
-
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    host = os.environ.get("HOST", "0.0.0.0")
-
-    llm_cfg = config.get("llm", {})
-    key_status = "已设置" if (llm_cfg.get("api_key") or os.environ.get("LLM_API_KEY")) else "未设置（内网无鉴权模式）"
-
-    print("╔══════════════════════════════════════════════════╗")
-    print("║        AI 测试用例生成器 — 启动中                ║")
-    print("╠══════════════════════════════════════════════════╣")
-    print(f"║  访问地址：http://localhost:{port}                 ║")
-    print(f"║  LLM 地址：{llm_cfg.get('base_url','')[:36]:<36} ║")
-    print(f"║  模型名称：{llm_cfg.get('model_name','')[:36]:<36} ║")
-    print(f"║  API Key ：{key_status:<36} ║")
-    print("╚══════════════════════════════════════════════════╝")
-    print("  提示：使用纯 Python 标准库，无第三方依赖")
-    print("  P2 第二阶段：用例标签、批量操作已启用")
-
-    server = ThreadedHTTPServer((host, port), RequestHandler)
-    server.serve_forever()
