@@ -23,7 +23,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from src.workflow.pipeline import GenerationPipeline
 from src.api.llm_client import LLMClient, _detect_provider
 from src.tools.importer import import_file_to_cases
-from src.memory.memory_store import MemoryStore
+from src.harness.memory_store import MemoryStore
 
 CONFIG_PATH = PROJECT_ROOT / "config.json"
 memory_store = MemoryStore(PROJECT_ROOT / "data")
@@ -1222,7 +1222,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 return
             
             try:
-                from src.memory.rule_extractor import RuleExtractor
+                from src.harness.rule_extractor import RuleExtractor
                 extractor = RuleExtractor(pipeline.llm)
                 new_rules = extractor.extract_from_feedback(feedback_text)
                 existing_rules = memory_store.load_rules()
@@ -1442,8 +1442,8 @@ class RequestHandler(BaseHTTPRequestHandler):
         elif self.path == "/api/optimize":
             # 一键优化：清理低效率规则 + 从优质用例学习
             try:
-                from src.memory.rule_manager import RuleManager
-                rule_manager = RuleManager(config, PROJECT_ROOT)
+                from src.harness.rule_file_manager import RuleFileManager
+                rule_manager = RuleFileManager(config, PROJECT_ROOT)
                 result = rule_manager.optimize_all_rules()
                 self.send_json({"success": True, **result})
             except Exception as e:
