@@ -18,8 +18,8 @@ from src.tools.deduplicator import deduplicate
 from src.tools.quality_gate import QualityGate
 from src.tools.quality_scorer import BatchQualityScorer
 from src.tools.prompt_builder import PromptBuilder
-from src.memory.memory_store import MemoryStore
-from src.memory.rule_injector import RuleInjector
+from src.harness.memory_store import MemoryStore
+from src.harness.rule_injector import RuleInjector
 from src.workflow.expert_pipeline import ThreeExpertPipeline
 
 

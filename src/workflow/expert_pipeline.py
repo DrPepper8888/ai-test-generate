@@ -9,7 +9,7 @@ from typing import List, Dict
 from src.api.llm_client import LLMClient
 from src.tools.formatter import FormatValidator
 from src.tools.deduplicator import deduplicate
-from src.memory.rule_injector import RuleInjector
+from src.harness.rule_injector import RuleInjector
 
 
 class ExpertGenerator:
