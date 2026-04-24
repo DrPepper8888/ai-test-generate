@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 LLM HTTP 调用封装 — 纯 Python 标准库实现
 支持：

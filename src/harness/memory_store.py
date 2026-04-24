@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 记忆存储管理器 - Harness 的核心数据层
 
@@ -123,6 +124,14 @@ class MemoryStore:
                     max_id = max(max_id, num)
             except ValueError:
                 pass
+
+        # 确保 rule_type 是枚举类型，支持字符串传入
+        if isinstance(rule_type, str):
+            from src.harness.models import RuleType
+            try:
+                rule_type = RuleType(rule_type)
+            except ValueError:
+                rule_type = RuleType.GENERAL
 
         rule = Rule(
             rule_id=f"RULE_{max_id + 1:04d}",

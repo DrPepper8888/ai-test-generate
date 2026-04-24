@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 状态机编排 — 串联完整生成流程
 状态：IDLE → LOADING_PROMPT → BUILDING_PROMPT → CALLING_LLM → VALIDATING → DONE / ERROR

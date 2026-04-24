@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Python 原生 Web 服务 — 使用 http.server 标准库
 无任何第三方依赖
