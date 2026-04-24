@@ -3,15 +3,15 @@
     "base_url": "https://ark.cn-beijing.volces.com/api/coding",
     "model_name": "deepseek-v3.2",
     "api_key": "ark-6d4853db-af22-45fd-a35b-1646811c04ea-67b8e",
-    "timeout": 120,
-    "max_tokens": 6144,
+    "timeout": 180,
+    "max_tokens": 8192,
     "temperature": 0.7
   },
   "generation": {
     "default_count": 7,
     "min_count": 3,
     "max_count": 20,
-    "batch_size": 20,
+    "batch_size": 15,
     "max_retries": 2
   },
   "storage": {

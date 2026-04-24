@@ -17,6 +17,61 @@
       --sans: 'Noto Sans SC', sans-serif;
       --radius: 6px;
     }
+
+    /* ── First-time Guide Modal ── */
+    .guide-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+    .guide-modal.open { display: flex; }
+    .guide-content {
+      background: var(--surface);
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      width: 580px;
+      max-width: 90vw;
+      padding: 28px 32px;
+      box-shadow: 0 0 60px rgba(74, 222, 128, 0.15);
+    }
+    .guide-header { text-align: center; margin-bottom: 24px; }
+    .guide-icon { font-size: 48px; margin-bottom: 12px; }
+    .guide-title { font-family: var(--mono); font-size: 18px; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
+    .guide-subtitle { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+    .guide-steps { background: var(--surface2); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+    .guide-step { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px; }
+    .guide-step:last-child { margin-bottom: 0; }
+    .guide-step-num {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--accent-dim); border: 1px solid var(--accent);
+      color: var(--accent); font-family: var(--mono); font-size: 11px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .guide-step-content { flex: 1; }
+    .guide-step-title { font-weight: 600; font-size: 13px; color: var(--text-dim); margin-bottom: 2px; }
+    .guide-step-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+    .guide-features { display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+    .guide-feature {
+      flex: 1; min-width: 120px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 6px; padding: 12px; text-align: center;
+    }
+    .guide-feature-icon { font-size: 20px; margin-bottom: 6px; }
+    .guide-feature-title { font-size: 11px; font-weight: 600; color: var(--text-dim); margin-bottom: 2px; }
+    .guide-feature-desc { font-size: 10px; color: var(--text-muted); }
+    .guide-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .guide-dismiss { background: transparent; border: none; color: var(--text-muted); font-family: var(--mono); font-size: 12px; cursor: pointer; padding: 8px 12px; }
+    .guide-dismiss:hover { color: var(--text-dim); }
+    .guide-start {
+      background: var(--accent-dim); border: 1px solid var(--accent); border-radius: 6px;
+      color: var(--accent); font-family: var(--mono); font-size: 13px; font-weight: 600;
+      padding: 10px 24px; cursor: pointer; transition: all .15s;
+    }
+    .guide-start:hover { background: var(--accent); color: #0d0f14; }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; line-height: 1.6; min-height: 100vh; }
 
@@ -91,6 +146,117 @@
     .count-preset { background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); font-family: var(--mono); font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer; transition: all .15s; }
     .count-preset:hover { border-color: var(--accent); color: var(--accent); }
 
+    /* ── Chat Box ── */
+    .chat-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .chat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .chat-header-title {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent2);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .chat-clear-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--mono);
+      font-size: 10px;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    .chat-clear-btn:hover {
+      background: var(--border);
+      color: var(--text-dim);
+    }
+    .chat-messages {
+      height: 140px;
+      overflow-y: auto;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .chat-messages::-webkit-scrollbar { width: 4px; }
+    .chat-messages::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+    .chat-empty {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+    .chat-msg {
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 11px;
+      line-height: 1.5;
+      max-width: 90%;
+    }
+    .chat-msg-user {
+      background: rgba(96, 165, 250, 0.15);
+      border: 1px solid rgba(96, 165, 250, 0.3);
+      color: var(--accent2);
+      align-self: flex-end;
+    }
+    .chat-msg-hint {
+      background: rgba(74, 222, 128, 0.08);
+      border: 1px solid rgba(74, 222, 128, 0.2);
+      color: var(--accent);
+      align-self: flex-start;
+      font-size: 10px;
+    }
+    .chat-input-row {
+      display: flex;
+      gap: 8px;
+      padding: 8px 12px;
+      border-top: 1px solid var(--border);
+    }
+    .chat-input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 7px 10px;
+      resize: none;
+    }
+    .chat-input:focus { outline: none; border-color: var(--accent2); }
+    .chat-input::placeholder { color: var(--text-muted); }
+    .chat-send-btn {
+      padding: 7px 14px;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .chat-send-btn:hover { background: var(--accent); color: #0d0f14; }
+
     .panel-footer { padding: 14px 18px; border-top: 1px solid var(--border); }
     .btn-gen {
       width: 100%; padding: 11px; background: var(--accent-dim); border: 1px solid var(--accent);
@@ -129,7 +295,56 @@
     .empty-icon { font-size: 36px; opacity: .3; }
     .empty-state p { font-family: var(--mono); font-size: 12px; }
 
-    .error-banner { display: none; margin: 14px 18px; padding: 11px 14px; background: rgba(248,113,113,.07); border: 1px solid rgba(248,113,113,.3); border-radius: var(--radius); font-family: var(--mono); font-size: 12px; color: var(--danger); line-height: 1.7; white-space: pre-wrap; }
+    .error-banner { 
+      display: none; 
+      margin: 14px 18px; 
+      padding: 0; 
+      background: rgba(248,113,113,.07); 
+      border: 1px solid rgba(248,113,113,.3); 
+      border-radius: var(--radius); 
+      overflow: hidden;
+    }
+    .error-banner.visible { display: block; }
+    .error-header { 
+      display: flex; 
+      align-items: center; 
+      padding: 10px 14px; 
+      font-family: var(--mono); 
+      font-size: 12px; 
+      color: var(--danger); 
+      font-weight: 600;
+      background: rgba(248,113,113,.1);
+    }
+    .error-header span { flex: 1; }
+    .error-copy-btn {
+      padding: 3px 10px;
+      background: transparent;
+      border: 1px solid var(--danger);
+      border-radius: 4px;
+      color: var(--danger);
+      font-family: var(--mono);
+      font-size: 10px;
+      cursor: pointer;
+      margin-left: 8px;
+    }
+    .error-copy-btn:hover { background: var(--danger); color: white; }
+    .error-body {
+      padding: 10px 14px;
+      font-family: var(--mono); 
+      font-size: 11px; 
+      color: var(--danger); 
+      line-height: 1.7; 
+      white-space: pre-wrap;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .error-hint {
+      padding: 8px 14px;
+      font-size: 10px;
+      color: var(--text-muted);
+      background: var(--surface2);
+      border-top: 1px solid rgba(248,113,113,.2);
+    }
 
     .progress-bar { height: 2px; background: var(--border); overflow: hidden; display: none; }
     .progress-fill { height: 100%; background: var(--accent); animation: prog 2s ease-in-out infinite; transform-origin: left; }
@@ -146,8 +361,433 @@
 
     .feedback-row { padding: 7px 18px; border-top: 1px solid var(--border); display: none; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
     .feedback-row.visible { display: flex; }
+
+    /* ── Learning Panel ── */
+    .learning-panel {
+      display: none;
+      background: rgba(74, 222, 128, 0.05);
+      border: 1px solid rgba(74, 222, 128, 0.2);
+      border-radius: var(--radius);
+      margin: 0 18px 12px;
+      padding: 12px 14px;
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+    .learning-panel.visible { display: block; }
+    .learning-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .learning-spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--accent);
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .learning-result {
+      margin-top: 8px;
+      padding: 8px;
+      background: var(--surface2);
+      border-radius: 4px;
+    }
+    .learning-success { color: var(--accent); }
+    .learning-discarded { color: var(--text-muted); margin-top: 4px; font-size: 10px; }
+    .learned-rule {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      margin: 4px 0;
+      padding: 4px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .learned-rule:last-child { border-bottom: none; }
+    .learned-rule-badge {
+      font-size: 9px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: var(--accent-dim);
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .learned-rule-text { color: var(--text-dim); font-size: 10px; line-height: 1.4; }
+
+    /* ── Rules Manager Modal ── */
+    .rules-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .rules-modal.open { display: flex; }
+    .rules-modal-content {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      width: 700px;
+      max-width: 90vw;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .rules-modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .rules-modal-header h3 {
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--accent);
+      flex: 1;
+    }
+    .rules-stats {
+      display: flex;
+      gap: 12px;
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 12px 20px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+    .rules-stats span { color: var(--text-muted); }
+    .rules-stats strong { color: var(--accent); }
+    .rules-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 20px;
+    }
+    .rule-item {
+      padding: 10px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+    .rule-item.deprecated {
+      opacity: 0.5;
+      border-color: var(--danger);
+    }
+    .rule-item-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .rule-type-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+    .rule-deprecated-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: rgba(248,113,113,.1);
+      color: var(--danger);
+    }
+    .rule-text {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+      line-height: 1.5;
+    }
+    .rule-meta {
+      display: flex;
+      gap: 12px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    .rule-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .rule-action-btn {
+      padding: 3px 8px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+      font-size: 10px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .rule-action-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .rule-action-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+    .rules-modal-footer {
+      padding: 12px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .rules-modal-btn {
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .rules-modal-btn.primary {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+    }
+    .rules-modal-btn.primary:hover { background: var(--accent); color: #0d0f14; }
+    .rules-modal-btn.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .rules-modal-btn.secondary:hover { border-color: var(--text-dim); color: var(--text-dim); }
+
+    /* ── Empty Rules State ── */
+    .rules-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+    .rules-empty-icon { font-size: 32px; margin-bottom: 12px; }
     .rating-btn { padding: 2px 9px; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--text-muted); font-size: 12px; cursor: pointer; transition: all .15s; }
-    .rating-btn:hover { border-color: var(--accent); }
+    .rating-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Case Actions ── */
+    .case-actions-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+    .case-count { color: var(--text-muted); }
+    .case-count strong { color: var(--accent); }
+    .case-action-btn {
+      padding: 4px 10px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .case-action-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+    .case-action-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+    .case-action-btn.primary { border-color: var(--accent); color: var(--accent); }
+    .case-action-btn.primary:hover { background: var(--accent-dim); }
+
+    .cases-table { width: 100%; border-collapse: collapse; }
+    .cases-table th {
+      text-align: left;
+      padding: 10px 12px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .cases-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-dim);
+      vertical-align: top;
+    }
+    .cases-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .id-cell { font-family: var(--mono); font-weight: 600; color: var(--accent2); white-space: nowrap; }
+    .action-cell { white-space: nowrap; }
+    .action-cell button {
+      padding: 2px 6px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-size: 10px;
+      cursor: pointer;
+    }
+    .action-cell button {
+      padding: 2px 6px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-size: 10px;
+      cursor: pointer;
+      margin-left: 2px;
+    }
+    .action-cell button:hover { border-color: var(--accent); color: var(--accent); }
+    .action-cell button.delete:hover { border-color: var(--danger); color: var(--danger); }
+    .case-num-cell { color: var(--text-muted); font-size: 10px; width: 30px; text-align: center; }
+    .case-kept { background: rgba(74, 222, 128, 0.15) !important; }
+    .case-deleted { background: rgba(248, 113, 113, 0.15) !important; }
+
+    /* ── Edit/Feedback Modal ── */
+    .case-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 1500;
+      align-items: center;
+      justify-content: center;
+    }
+    .case-modal.open { display: flex; }
+    .case-modal-content {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      width: 600px;
+      max-width: 90vw;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .case-modal-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .case-modal-header h3 {
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--accent);
+    }
+    .case-modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .case-modal-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 18px;
+    }
+    .case-field {
+      margin-bottom: 12px;
+    }
+    .case-field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .case-field textarea, .case-field input {
+      width: 100%;
+      padding: 8px 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+      resize: vertical;
+    }
+    .case-field textarea:focus, .case-field input:focus {
+      outline: none;
+      border-color: var(--accent2);
+    }
+    .case-modal-footer {
+      padding: 12px 18px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .case-modal-btn {
+      padding: 7px 16px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .case-modal-btn.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .case-modal-btn.secondary:hover { border-color: var(--text-dim); color: var(--text-dim); }
+    .case-modal-btn.primary {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+    }
+    .case-modal-btn.primary:hover { background: var(--accent); color: #0d0f14; }
+    .case-modal-btn.ai {
+      background: var(--accent2);
+      border: 1px solid var(--accent2);
+      color: #0d0f14;
+    }
+    .case-modal-btn.ai:hover { background: #93c5fd; border-color: #93c5fd; }
+
+    .case-diff {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 12px;
+      margin-top: 12px;
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+    .case-diff-title {
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      font-size: 10px;
+    }
+    .case-diff-old { color: var(--danger); text-decoration: line-through; margin-bottom: 4px; }
+    .case-diff-new { color: var(--accent); }
+    .case-diff-arrow { color: var(--text-muted); margin: 6px 0; }
+
+    .modification-history {
+      background: var(--surface2);
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 12px;
+      font-family: var(--mono);
+      font-size: 10px;
+    }
+    .modification-history-title {
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .modification-item {
+      padding: 4px 0;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+    .modification-item:last-child { border-bottom: none; }
 
     @media (max-width: 860px) {
       .main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
@@ -157,9 +797,72 @@
 </head>
 <body>
 
+<!-- First-time Guide Modal -->
+<div class="guide-modal" id="guide-modal">
+  <div class="guide-content">
+    <div class="guide-header">
+      <div class="guide-icon">🦆</div>
+      <div class="guide-title">欢迎使用 AI 测试用例生成器</div>
+      <div class="guide-subtitle">集成 Harness 进化系统，让 AI 越用越懂你的需求</div>
+    </div>
+
+    <div class="guide-steps">
+      <div class="guide-step">
+        <div class="guide-step-num">1</div>
+        <div class="guide-step-content">
+          <div class="guide-step-title">填写需求 + 示例</div>
+          <div class="guide-step-desc">输入测试需求描述，参考示例用例会帮助 AI 理解输出格式</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-step-num">2</div>
+        <div class="guide-step-content">
+          <div class="guide-step-title">总指令框宏观调控</div>
+          <div class="guide-step-desc">在顶部聊天框输入通用指令，如"注意时间范围要完整"，所有生成都会参考</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-step-num">3</div>
+        <div class="guide-step-content">
+          <div class="guide-step-title">生成 + 给反馈</div>
+          <div class="guide-step-desc">生成用例后，点 👍 表示好，👎 表示差。系统会自动学习改进</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="guide-features">
+      <div class="guide-feature">
+        <div class="guide-feature-icon">💬</div>
+        <div class="guide-feature-title">总指令框</div>
+        <div class="guide-feature-desc">宏观调控每次生成</div>
+      </div>
+      <div class="guide-feature">
+        <div class="guide-feature-icon">📋</div>
+        <div class="guide-feature-title">测试点拆解</div>
+        <div class="guide-feature-desc">先拆点再生成</div>
+      </div>
+      <div class="guide-feature">
+        <div class="guide-feature-icon">🦆</div>
+        <div class="guide-feature-title">Harness</div>
+        <div class="guide-feature-desc">自动学习规则进化</div>
+      </div>
+      <div class="guide-feature">
+        <div class="guide-feature-icon">🧠</div>
+        <div class="guide-feature-title">自定义规则</div>
+        <div class="guide-feature-desc">设置你的专属规则</div>
+      </div>
+    </div>
+
+    <div class="guide-footer">
+      <button class="guide-dismiss" onclick="dismissGuide()">下次再说</button>
+      <button class="guide-start" onclick="dismissGuide()">开始使用 →</button>
+    </div>
+  </div>
+</div>
+
 <header>
   <div class="logo"><div class="logo-icon">⚡</div>AI TestGen</div>
-  <span class="header-sub">测试用例生成器 v1.0</span>
+  <span class="header-sub">测试用例生成器 v2.0</span>
   <div class="header-right">
     <div class="pill" onclick="checkHealth()" id="health-pill">
       <div class="dot" id="status-dot"></div>
@@ -202,6 +905,21 @@
   <div class="panel-left">
     <div class="panel-title">// 输入参数</div>
     <div class="form-body">
+      <!-- 总聊天框 -->
+      <div class="chat-box">
+        <div class="chat-header">
+          <div class="chat-header-title">💬 总指令框</div>
+          <button class="chat-clear-btn" onclick="clearChat()">清空</button>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+          <div class="chat-empty" id="chat-empty">输入总体指令，AI 生成时会参考</div>
+        </div>
+        <div class="chat-input-row">
+          <input type="text" class="chat-input" id="chat-input" placeholder="如：注意时间范围要覆盖完整的11:30-13:00，而非只测到12:00" onkeydown="handleChatKeydown(event)" />
+          <button class="chat-send-btn" onclick="sendChatMessage()">发送</button>
+        </div>
+      </div>
+
       <!-- 生成模式选择 -->
       <div class="field">
         <label>生成模式</label>
@@ -263,6 +981,7 @@
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
           <span style="font-size:14px">🦆</span>
           <span style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-dim)">Harness 进化状态</span>
+          <button onclick="openRulesModal()" style="margin-left:auto;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text-muted);font-family:var(--mono);font-size:10px;padding:2px 8px;cursor:pointer">📋 管理</button>
         </div>
         <div style="font-family:var(--mono);font-size:11px;color:var(--text-muted)">
           已学习 <span id="rule-count" style="color:var(--accent);font-weight:600">-</span> 条规则
@@ -333,7 +1052,23 @@
         <p>填写左侧参数后点击「生成」</p>
         <p style="color:var(--text-muted);font-size:11px">先在 ⚙ LLM 配置 里设置服务地址和 Key</p>
       </div>
-      <div class="error-banner" id="error-banner"></div>
+      <div class="error-banner" id="error-banner">
+        <div class="error-header">
+          <span>⚠️ 生成失败</span>
+          <button class="error-copy-btn" onclick="copyError()">📋 复制错误信息</button>
+        </div>
+        <div class="error-body" id="error-body"></div>
+        <div class="error-hint">如果问题持续出现，请复制以上信息发给开发者排查</div>
+      </div>
+
+      <!-- 用例操作栏 -->
+      <div class="case-actions-bar" id="case-actions-bar" style="display:none">
+        <span class="case-count">共 <strong id="case-total-count">0</strong> 条</span>
+        <button class="case-action-btn" onclick="showContinueGenerate()">➕ 继续生成</button>
+        <button class="case-action-btn danger" onclick="deleteSelectedCases()">🗑️ 删除选中</button>
+        <button class="case-action-btn" onclick="selectAllCases()">☑️ 全选</button>
+      </div>
+
       <div class="tab-content active" id="tab-table">
         <table class="cases-table" id="cases-table" style="display:none">
           <thead id="table-head"></thead>
@@ -344,16 +1079,203 @@
       <div class="tab-content" id="tab-json"></div>
     </div>
     <div class="feedback-row" id="feedback-row">
-      <span>生成质量：</span>
-      <button class="rating-btn" onclick="submitFeedback(5)">👍 好</button>
-      <button class="rating-btn" onclick="submitFeedback(2)">👎 差</button>
-      <span id="feedback-thanks" style="display:none;color:var(--accent)">感谢反馈！</span>
+      <span>用例审查：</span>
+      <button class="rating-btn" onclick="markAllPassed()" style="border-color:var(--accent);color:var(--accent)">✅ 全部通过</button>
+      <button class="rating-btn" onclick="showDeleteSelector()">❌ 选择删除</button>
+      <span id="feedback-thanks" style="display:none;color:var(--accent)">已记录！</span>
+    </div>
+
+    <!-- 学习结果面板 -->
+    <div class="learning-panel" id="learning-panel">
+      <div class="learning-header">
+        <div class="learning-spinner" id="learning-spinner"></div>
+        <span id="learning-status">Harness 正在学习...</span>
+      </div>
+      <div class="learning-result" id="learning-result" style="display:none">
+        <div class="learning-success" id="learning-success"></div>
+        <div class="learning-discarded" id="learning-discarded"></div>
+      </div>
+    </div>
+
+    <!-- 规则管理弹窗 -->
+    <div class="rules-modal" id="rules-modal">
+      <div class="rules-modal-content">
+        <div class="rules-modal-header">
+          <h3>📋 规则库管理</h3>
+          <button onclick="closeRulesModal()" style="background:transparent;border:none;color:var(--text-muted);font-size:20px;cursor:pointer">×</button>
+        </div>
+        <div class="rules-stats" id="rules-stats">
+          <span>总规则：<strong id="rules-total">0</strong></span>
+          <span>活跃：<strong id="rules-active">0</strong></span>
+          <span>已淘汰：<strong id="rules-deprecated">0</strong></span>
+        </div>
+        <div class="rules-list" id="rules-list">
+          <div class="rules-empty">
+            <div class="rules-empty-icon">🦆</div>
+            <div>Harness 还没有学习到规则</div>
+            <div style="margin-top:8px;color:var(--text-dim)">开始使用后，规则会出现在这里</div>
+          </div>
+        </div>
+        <div class="rules-modal-footer">
+          <button class="rules-modal-btn secondary" onclick="cleanupDeprecatedRules()">🧹 清理已淘汰</button>
+          <button class="rules-modal-btn secondary" onclick="exportRules()">📤 导出</button>
+          <button class="rules-modal-btn primary" onclick="closeRulesModal()">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 单条用例编辑/反馈弹窗 -->
+    <div class="case-modal" id="case-modal">
+      <div class="case-modal-content">
+        <div class="case-modal-header">
+          <h3 id="case-modal-title">编辑用例</h3>
+          <button class="case-modal-close" onclick="closeCaseModal()">×</button>
+        </div>
+        <div class="case-modal-body" id="case-modal-body">
+          <!-- 动态内容 -->
+        </div>
+        <div class="case-modal-footer" id="case-modal-footer">
+          <!-- 动态按钮 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 继续生成弹窗 -->
+    <div class="rules-modal" id="continue-modal">
+      <div class="rules-modal-content" style="width:480px">
+        <div class="rules-modal-header">
+          <h3>➕ 继续生成用例</h3>
+          <button onclick="closeContinueModal()" style="background:transparent;border:none;color:var(--text-muted);font-size:20px;cursor:pointer">×</button>
+        </div>
+        <div style="padding:16px 20px">
+          <div style="margin-bottom:16px;color:var(--text-muted);font-size:12px">
+            当前已有 <strong style="color:var(--accent)" id="current-case-count">0</strong> 条用例
+          </div>
+          <div style="margin-bottom:16px">
+            <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--text-dim)">再生成几条？</label>
+            <input type="number" id="continue-count" value="3" min="1" max="20" style="
+              width:100%;padding:10px;background:var(--surface2);border:1px solid var(--border);
+              border-radius:6px;color:var(--text);font-family:var(--mono);font-size:14px
+            " />
+          </div>
+          <div style="margin-bottom:16px">
+            <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--text-dim)">补充说明（可选）</label>
+            <textarea id="continue-hint" placeholder="例如：补充一些边界值的测试用例" style="
+              width:100%;height:60px;padding:10px;background:var(--surface2);border:1px solid var(--border);
+              border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;resize:none
+            "></textarea>
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button onclick="closeContinueModal()" style="
+              padding:8px 16px;background:transparent;border:1px solid var(--border);
+              border-radius:6px;color:var(--text-muted);font-family:var(--mono);font-size:12px;cursor:pointer
+            ">取消</button>
+            <button onclick="doContinueGenerate()" style="
+              padding:8px 20px;background:var(--accent-dim);border:1px solid var(--accent);
+              border-radius:6px;color:var(--accent);font-family:var(--mono);font-size:12px;font-weight:600;cursor:pointer
+            ">开始生成</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
 let currentResult = null;
+let chatHistory = [];  // 聊天历史
+
+// ── Chat Functions ──────────────────────────────────────────
+function loadChatHistory() {
+  try {
+    const saved = localStorage.getItem('testgen_chat_history');
+    if (saved) {
+      chatHistory = JSON.parse(saved);
+      renderChatMessages();
+    }
+  } catch {}
+}
+
+function saveChatHistory() {
+  try {
+    localStorage.setItem('testgen_chat_history', JSON.stringify(chatHistory));
+  } catch {}
+}
+
+function renderChatMessages() {
+  const container = document.getElementById('chat-messages');
+  const emptyEl = document.getElementById('chat-empty');
+  
+  if (chatHistory.length === 0) {
+    emptyEl.style.display = 'flex';
+    // 移除所有用户消息，只保留空提示
+    container.querySelectorAll('.chat-msg').forEach(el => el.remove());
+    return;
+  }
+  
+  emptyEl.style.display = 'none';
+  
+  // 清空并重新渲染
+  container.querySelectorAll('.chat-msg').forEach(el => el.remove());
+  
+  chatHistory.forEach(msg => {
+    const div = document.createElement('div');
+    div.className = msg.type === 'user' ? 'chat-msg chat-msg-user' : 'chat-msg chat-msg-hint';
+    div.textContent = msg.text;
+    container.appendChild(div);
+  });
+  
+  // 滚动到底部
+  container.scrollTop = container.scrollHeight;
+}
+
+function handleChatKeydown(e) {
+  // Ctrl+Enter 或 Cmd+Enter 发送
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    sendChatMessage();
+  }
+}
+
+function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  
+  if (!text) return;
+  
+  // 添加用户消息
+  chatHistory.push({ type: 'user', text, timestamp: Date.now() });
+  
+  // 添加系统提示消息
+  const hintText = '✓ 指令已记住，生成时会应用';
+  chatHistory.push({ type: 'hint', text: hintText, timestamp: Date.now() });
+  
+  saveChatHistory();
+  renderChatMessages();
+  
+  // 清空输入框
+  input.value = '';
+}
+
+function clearChat() {
+  chatHistory = [];
+  saveChatHistory();
+  renderChatMessages();
+}
+
+function getChatContext() {
+  // 将聊天历史转换为 AI 可理解的上下文提示
+  if (chatHistory.length === 0) return '';
+  
+  const userMessages = chatHistory.filter(m => m.type === 'user');
+  if (userMessages.length === 0) return '';
+  
+  const context = '\n\n【用户总体指令】\n' + 
+    userMessages.map((m, i) => `${i + 1}. ${m.text}`).join('\n') +
+    '\n\n请在生成测试用例时严格遵循以上指令。';
+  
+  return context;
+}
 
 const PRESETS = {
   openai:    { url: 'https://api.openai.com',    hint: 'gpt-4o / gpt-4o-mini / gpt-3.5-turbo' },
@@ -365,7 +1287,24 @@ const PRESETS = {
 document.addEventListener('DOMContentLoaded', () => {
   checkHealth();
   loadConfig();
+  loadChatHistory();  // 加载聊天历史
+
+  // 检查是否首次使用
+  checkFirstTimeGuide();
 });
+
+// ── First-time Guide ───────────────────────────────────────
+function checkFirstTimeGuide() {
+  const hasSeenGuide = localStorage.getItem('testgen_guide_seen');
+  if (!hasSeenGuide) {
+    document.getElementById('guide-modal').classList.add('open');
+  }
+}
+
+function dismissGuide() {
+  document.getElementById('guide-modal').classList.remove('open');
+  localStorage.setItem('testgen_guide_seen', 'true');
+}
 
 // ── Health ─────────────────────────────────────────────────
 async function checkHealth() {
@@ -466,9 +1405,12 @@ async function generate() {
   if (!requirement) { alert('请填写测试需求描述'); return; }
   if (!example) { alert('请填写示例用例'); return; }
 
+  // 获取聊天上下文
+  const chatContext = getChatContext();
+
   // 先拆测试点模式
   if (mode === 'points-first') {
-    await generatePointsFirst(requirement, example);
+    await generatePointsFirst(requirement + chatContext, example);
     return;
   }
 
@@ -476,14 +1418,14 @@ async function generate() {
   if (mode === 'incremental') {
     document.getElementById('testpoints-section').style.display = 'none';
     document.getElementById('gen-label').textContent = '自动分批生成中...';
-    await generateIncremental(requirement, example, count);
+    await generateIncremental(requirement + chatContext, example, count);
     return;
   }
 
   // 队列模式（多人同时使用时自动排队）
   if (mode === 'queued') {
     document.getElementById('testpoints-section').style.display = 'none';
-    await generateWithQueue(requirement, example, count);
+    await generateWithQueue(requirement + chatContext, example, count);
     return;
   }
 
@@ -499,10 +1441,10 @@ async function generate() {
     const r = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requirement, example, count }),
+      body: JSON.stringify({ requirement: requirement + chatContext, example, count }),
     });
     const data = await r.json();
-    if (!data.success) { showError(data.error || '生成失败'); return; }
+    if (!data.success) { showError(data.error || '生成失败', data.debug); return; }
     currentResult = data;
     renderResult(data);
     loadHarnessStatus(); // 更新 Harness 状态
@@ -531,7 +1473,7 @@ async function generatePointsFirst(requirement, example) {
     const data = await r.json();
 
     if (!data.success) {
-      showError(data.error || '测试点拆解失败');
+      showError(data.error || '测试点拆解失败', data.debug);
       return;
     }
 
@@ -572,6 +1514,7 @@ async function confirmPoints() {
   const requirement = document.getElementById('requirement').value.trim();
   const example = document.getElementById('example').value.trim();
   const count = parseInt(document.getElementById('count').value) || 7;
+  const chatContext = getChatContext();  // 获取聊天上下文
 
   setLoading(true);
   
@@ -584,13 +1527,13 @@ async function confirmPoints() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
-        requirement: requirement + pointsHint, 
+        requirement: requirement + chatContext + pointsHint, 
         example, 
         count 
       }),
     });
     const data = await r.json();
-    if (!data.success) { showError(data.error || '生成失败'); return; }
+    if (!data.success) { showError(data.error || '生成失败', data.debug); return; }
     currentResult = data;
     renderResult(data);
     loadHarnessStatus();
@@ -629,7 +1572,7 @@ async function generateIncremental(requirement, example, targetCount) {
     const data = await r.json();
 
     if (!data.success) {
-      showError(data.error || '生成失败');
+      showError(data.error || '生成失败', data.debug);
       return;
     }
 
@@ -817,7 +1760,7 @@ async function generateWithQueue(requirement, example, count) {
     });
     const data = await r.json();
     
-    if (!data.success) { showError(data.error || '生成失败'); return; }
+    if (!data.success) { showError(data.error || '生成失败', data.debug); return; }
     currentResult = data;
     renderResult(data);
     loadHarnessStatus();
@@ -844,22 +1787,46 @@ document.querySelectorAll('input[name="gen-mode"]').forEach(radio => {
 });
 
 // ── Render ──────────────────────────────────────────────────
+let allCases = [];  // 保存所有用例
+let keptCases = new Set();  // 标记为通过的用例索引
+let markedForDeletion = new Set();  // 标记为删除的用例索引
+let currentSessionId = null;  // 当前会话ID
+
 function renderResult(data) {
   const cases = data.cases || [];
+  allCases = [...cases];  // 保存到全局变量
+  selectedCases.clear();  // 清空选择
+
   document.getElementById('result-meta').innerHTML = '生成完成：<strong>' + cases.length + ' 条</strong> 用例';
   const badge = document.getElementById('retry-badge');
   badge.style.display = data.retries > 0 ? 'inline' : 'none';
   if (data.retries > 0) badge.textContent = '重试 ' + data.retries + ' 次';
 
+  // 显示用例操作栏
+  document.getElementById('case-actions-bar').style.display = 'flex';
+  document.getElementById('case-total-count').textContent = cases.length;
+
   if (cases.length > 0) {
     const fields = Object.keys(cases[0]);
+    // 添加操作列和序号列
+    const allFields = ['#', ...fields, '操作'];
     document.getElementById('table-head').innerHTML =
-      '<tr>' + fields.map(f => '<th>' + esc(f) + '</th>').join('') + '</tr>';
-    document.getElementById('table-body').innerHTML = cases.map(c =>
-      '<tr>' + fields.map((f, i) =>
+      '<tr>' + allFields.map(f => '<th>' + esc(f) + '</th>').join('') + '</tr>';
+    
+    document.getElementById('table-body').innerHTML = cases.map((c, idx) => {
+      const kept = keptCases.has(idx);
+      return '<tr data-idx="' + idx + '" class="' + (kept ? 'case-kept' : '') + '">' +
+      '<td class="case-num-cell">' + (idx + 1) + '</td>' +
+      fields.map((f, i) =>
         '<td class="' + (i === 0 ? 'id-cell' : '') + '">' + esc(String(c[f] ?? '')) + '</td>'
-      ).join('') + '</tr>'
-    ).join('');
+      ).join('') +
+      '<td class="action-cell">' +
+        '<button onclick="toggleKeepCase(' + idx + ')" class="' + (kept ? 'case-kept' : '') + '" title="标记通过">' + (kept ? '✅' : '○') + '</button>' +
+        '<button onclick="openEditCase(' + idx + ')" title="修改">✏️</button>' +
+        '<button class="delete" onclick="deleteCase(' + idx + ')" title="删除">🗑️</button>' +
+      '</td>' +
+      '</tr>';
+    }).join('');
     document.getElementById('cases-table').style.display = 'table';
   }
 
@@ -868,6 +1835,712 @@ function renderResult(data) {
   ['btn-md', 'btn-csv', 'btn-json'].forEach(id => document.getElementById(id).disabled = false);
   document.getElementById('feedback-row').classList.add('visible');
   document.getElementById('feedback-thanks').style.display = 'none';
+}
+
+// ── Case Actions ─────────────────────────────────────────────
+function deleteCase(idx) {
+  if (confirm('确定要删除这条用例吗？')) {
+    allCases.splice(idx, 1);
+    selectedCases.delete(idx);
+    // 重新渲染
+    renderCasesList();
+  }
+}
+
+function renderCasesList() {
+  // 重新渲染用例列表
+  document.getElementById('case-total-count').textContent = allCases.length;
+  
+  if (allCases.length === 0) {
+    document.getElementById('cases-table').style.display = 'none';
+    document.getElementById('result-meta').innerHTML = '<span style="color:var(--text-muted)">已删除所有用例</span>';
+    return;
+  }
+
+  const fields = Object.keys(allCases[0]);
+  const allFields = ['#', ...fields, '操作'];
+  document.getElementById('table-head').innerHTML =
+    '<tr>' + allFields.map(f => '<th>' + esc(f) + '</th>').join('') + '</tr>';
+  
+  document.getElementById('table-body').innerHTML = allCases.map((c, idx) => {
+    const kept = keptCases.has(idx);
+    return '<tr data-idx="' + idx + '" class="' + (kept ? 'case-kept' : '') + '">' +
+    '<td class="case-num-cell">' + (idx + 1) + '</td>' +
+    fields.map((f, i) =>
+      '<td class="' + (i === 0 ? 'id-cell' : '') + '">' + esc(String(c[f] ?? '')) + '</td>'
+    ).join('') +
+    '<td class="action-cell">' +
+      '<button onclick="toggleKeepCase(' + idx + ')" class="' + (kept ? 'case-kept' : '') + '" title="标记通过">' + (kept ? '✅' : '○') + '</button>' +
+      '<button onclick="openEditCase(' + idx + ')" title="修改">✏️</button>' +
+      '<button class="delete" onclick="deleteCase(' + idx + ')" title="删除">🗑️</button>' +
+    '</td>' +
+    '</tr>';
+  }).join('');
+  
+  // 更新 markdown 和 json 视图
+  document.getElementById('result-meta').innerHTML = '共 <strong>' + allCases.length + '</strong> 条用例（已修改）';
+  
+  // 更新 currentResult
+  if (currentResult) {
+    currentResult.cases = [...allCases];
+  }
+}
+
+// ── Case Review Functions ─────────────────────────────────────
+function toggleKeepCase(idx) {
+  if (keptCases.has(idx)) {
+    keptCases.delete(idx);
+  } else {
+    keptCases.add(idx);
+    markedForDeletion.delete(idx);
+  }
+  // 更新行样式
+  const tr = document.querySelector(`tr[data-idx="${idx}"]`);
+  if (tr) {
+    tr.className = keptCases.has(idx) ? 'case-kept' : '';
+    tr.querySelector('button').textContent = keptCases.has(idx) ? '✅' : '○';
+  }
+  updateReviewStatus();
+}
+
+function markAllPassed() {
+  // 标记全部通过
+  allCases.forEach((_, idx) => keptCases.add(idx));
+  markedForDeletion.clear();
+  renderCasesList();
+  updateReviewStatus();
+  // 触发学习
+  triggerAutoLearn(5);
+  document.getElementById('feedback-thanks').style.display = 'inline';
+}
+
+function showDeleteSelector() {
+  // 显示删除选择模式
+  markedForDeletion.clear();
+  // 高亮所有行让用户选择
+  document.querySelectorAll('#table-body tr').forEach(tr => {
+    tr.style.borderLeft = '3px solid var(--danger)';
+    tr.onclick = () => {
+      const idx = parseInt(tr.dataset.idx);
+      if (markedForDeletion.has(idx)) {
+        markedForDeletion.delete(idx);
+        tr.style.borderLeft = '3px solid transparent';
+        tr.style.background = keptCases.has(idx) ? 'rgba(74, 222, 128, 0.15)' : '';
+      } else {
+        markedForDeletion.add(idx);
+        tr.style.borderLeft = '3px solid var(--danger)';
+        tr.style.background = 'rgba(248, 113, 113, 0.1)';
+      }
+      updateDeleteCount();
+    };
+  });
+  // 显示确认按钮
+  const actionsBar = document.getElementById('case-actions-bar');
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'case-action-btn';
+  confirmBtn.textContent = '✅ 确认删除';
+  confirmBtn.onclick = confirmDeletion;
+  confirmBtn.id = 'confirm-delete-btn';
+  actionsBar.appendChild(confirmBtn);
+  
+  // 显示取消按钮
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'case-action-btn';
+  cancelBtn.textContent = '❌ 取消';
+  cancelBtn.onclick = cancelDeleteMode;
+  cancelBtn.id = 'cancel-delete-btn';
+  actionsBar.appendChild(cancelBtn);
+  
+  // 隐藏原来的按钮
+  document.querySelector('[onclick="selectAllCases()"]').style.display = 'none';
+  document.querySelector('[onclick="deleteSelectedCases()"]').style.display = 'none';
+}
+
+function updateDeleteCount() {
+  const btn = document.getElementById('confirm-delete-btn');
+  if (btn) {
+    btn.textContent = '✅ 确认删除 (' + markedForDeletion.size + ')';
+  }
+}
+
+function confirmDeletion() {
+  // 删除标记的用例
+  if (markedForDeletion.size === 0) {
+    alert('请先选择要删除的用例');
+    return;
+  }
+  // 从大到小排序删除
+  const sorted = [...markedForDeletion].sort((a, b) => b - a);
+  sorted.forEach(idx => allCases.splice(idx, 1));
+  keptCases.clear();
+  markedForDeletion.clear();
+  renderCasesList();
+  cancelDeleteMode();
+  // 触发学习（负面）
+  triggerAutoLearn(2);
+  document.getElementById('feedback-thanks').style.display = 'inline';
+}
+
+function cancelDeleteMode() {
+  markedForDeletion.clear();
+  // 恢复行样式
+  document.querySelectorAll('#table-body tr').forEach(tr => {
+    tr.style.borderLeft = 'none';
+    tr.style.background = '';
+    tr.onclick = null;
+  });
+  // 删除确认/取消按钮
+  ['confirm-delete-btn', 'cancel-delete-btn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.remove();
+  });
+  // 显示原来的按钮
+  document.querySelector('[onclick="selectAllCases()"]').style.display = '';
+  document.querySelector('[onclick="deleteSelectedCases()"]').style.display = '';
+}
+
+function updateReviewStatus() {
+  const passed = keptCases.size;
+  const total = allCases.length;
+  document.getElementById('feedback-thanks').textContent = '已通过 ' + passed + '/' + total;
+}
+
+// ── Single Case Edit & Feedback ─────────────────────────────
+let currentEditIdx = null;
+let modificationHistory = {};  // { caseId: [{timestamp, type, original, modified, userFeedback}] }
+
+function openEditCase(idx) {
+  currentEditIdx = idx;
+  const caseData = allCases[idx];
+  const fields = Object.keys(caseData).filter(f => !f.startsWith('_'));
+  const caseId = caseData.id || `TC_${idx + 1}`;
+  
+  // 获取修改历史
+  const history = modificationHistory[caseId] || [];
+  
+  // 构建修改历史简览
+  let historyHtml = '';
+  if (history.length > 0) {
+    const lastMod = history[history.length - 1];
+    historyHtml = `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:12px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">
+          修改历史：共 ${history.length} 次
+        </div>
+        <div style="font-size:11px;color:var(--accent2)">
+          ${history.length >= 2 ? '✏️💬 多种方式修改过' : '✏️ 上次：' + (lastMod.type === 'edit' ? '手动编辑' : 'AI修改')}
+        </div>
+      </div>
+    `;
+  }
+  
+  // 构建字段编辑区
+  let fieldsHtml = '';
+  fields.forEach(field => {
+    fieldsHtml += `
+      <div class="case-field">
+        <label>${field}</label>
+        <textarea id="edit-field-${field}" rows="2" placeholder="输入 ${field}...">${(caseData[field] || '').toString().replace(/`/g, '\`').replace(/\$/g, '\$')}</textarea>
+      </div>
+    `;
+  });
+  
+  // 构建弹窗内容
+  let bodyHtml = `
+    ${historyHtml}
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">修改方式：</div>
+      <div style="display:flex;gap:8px">
+        <button class="case-modal-btn primary" onclick="showManualEdit()" style="flex:1">
+          ✏️ 我自己改
+        </button>
+        <button class="case-modal-btn ai" onclick="showAIFeedback()" style="flex:1">
+          💬 让AI帮我改
+        </button>
+      </div>
+    </div>
+    <div id="edit-fields-container" style="display:none">
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">直接修改字段：</div>
+      ${fieldsHtml}
+    </div>
+    <div id="ai-feedback-container" style="display:none">
+      <div class="case-field">
+        <label>描述问题或修改建议</label>
+        <textarea id="feedback-text" rows="3" placeholder="例如：预期结果不够具体，应该是显示"领取成功"而不是简单的"成功""></textarea>
+      </div>
+    </div>
+  `;
+  
+  document.getElementById('case-modal-title').textContent = '✏️ 修改用例 ' + caseId;
+  document.getElementById('case-modal-body').innerHTML = bodyHtml;
+  document.getElementById('case-modal-footer').innerHTML = `
+    <button class="case-modal-btn secondary" onclick="closeCaseModal()">取消</button>
+    <button class="case-modal-btn primary" id="save-btn" onclick="saveEditCase()" style="display:none">💾 保存修改</button>
+    <button class="case-modal-btn ai" id="ai-btn" onclick="submitCaseFeedback()" style="display:none">✨ 让AI修改</button>
+  `;
+  
+  document.getElementById('case-modal').classList.add('open');
+}
+
+function showManualEdit() {
+  document.getElementById('edit-fields-container').style.display = 'block';
+  document.getElementById('ai-feedback-container').style.display = 'none';
+  document.getElementById('save-btn').style.display = 'inline-block';
+  document.getElementById('ai-btn').style.display = 'none';
+}
+
+function showAIFeedback() {
+  document.getElementById('edit-fields-container').style.display = 'none';
+  document.getElementById('ai-feedback-container').style.display = 'block';
+  document.getElementById('save-btn').style.display = 'none';
+  document.getElementById('ai-btn').style.display = 'inline-block';
+}
+
+async function submitCaseFeedback() {
+  if (currentEditIdx === null) return;
+  
+  const feedbackText = document.getElementById('feedback-text')?.value?.trim();
+  if (!feedbackText) {
+    alert('请输入问题描述或修改建议');
+    return;
+  }
+  
+  const caseData = allCases[currentEditIdx];
+  const caseId = caseData.id || `TC_${currentEditIdx + 1}`;
+  const requirement = document.getElementById('requirement').value.trim();
+  
+  // 显示加载状态
+  const footer = document.getElementById('case-modal-footer');
+  footer.innerHTML = '<span style="color:var(--accent2)">✨ AI 正在修改...</span>';
+  
+  try {
+    const resp = await fetch('/api/generate-single', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requirement: requirement,
+        session_id: currentSessionId || 'local',
+        case_id: caseId,
+        case_index: currentEditIdx,
+        feedback: feedbackText,
+        current_case: caseData
+      })
+    });
+    const result = await resp.json();
+    
+    if (result.success && result.new_case) {
+      const original = {...caseData};
+      allCases[currentEditIdx] = result.new_case;
+      
+      // 记录修改历史
+      if (!modificationHistory[caseId]) {
+        modificationHistory[caseId] = [];
+      }
+      modificationHistory[caseId].push({
+        timestamp: new Date().toISOString(),
+        type: 'feedback',
+        original: original,
+        modified: result.new_case,
+        userFeedback: feedbackText
+      });
+      
+      closeCaseModal();
+      renderCasesList();
+      showToast('✅ 用例已更新');
+    } else {
+      alert('修改失败：' + (result.error || '未知错误'));
+      footer.innerHTML = \`
+        <button class="case-modal-btn secondary" onclick="closeCaseModal()">取消</button>
+        <button class="case-modal-btn ai" id="ai-btn" onclick="submitCaseFeedback()">✨ 让AI修改</button>
+      \`;
+    }
+  } catch (e) {
+    alert('请求失败：' + e.message);
+    closeCaseModal();
+  }
+}
+
+function closeCaseModal() {
+  document.getElementById('case-modal').classList.remove('open');
+  currentEditIdx = null;
+}
+
+function saveEditCase() {
+  if (currentEditIdx === null) return;
+  
+  const caseData = allCases[currentEditIdx];
+  const fields = Object.keys(caseData).filter(f => !f.startsWith('_'));
+  const original = {...caseData};
+  
+  // 收集修改后的值
+  fields.forEach(field => {
+    const textarea = document.getElementById(`edit-field-${field}`);
+    if (textarea) {
+      caseData[field] = textarea.value;
+    }
+  });
+  
+  // 记录修改历史
+  const caseId = caseData.id || `TC_${currentEditIdx + 1}`;
+  if (!modificationHistory[caseId]) {
+    modificationHistory[caseId] = [];
+  }
+  modificationHistory[caseId].push({
+    timestamp: new Date().toISOString(),
+    type: 'edit',
+    original: original,
+    modified: {...caseData},
+    userFeedback: '手动编辑'
+  });
+  
+  closeCaseModal();
+  renderCasesList();
+  
+  // 显示成功提示
+  showToast('✅ 用例已保存');
+}
+
+// ── Case Review Functions ─────────────────────────────────────
+function toggleKeepCase(idx) {
+  if (keptCases.has(idx)) {
+    keptCases.delete(idx);
+  } else {
+    keptCases.add(idx);
+    markedForDeletion.delete(idx);
+  }
+  // 更新行样式
+  const tr = document.querySelector(`tr[data-idx="${idx}"]`);
+  if (tr) {
+    tr.className = keptCases.has(idx) ? 'case-kept' : '';
+    tr.querySelector('button').textContent = keptCases.has(idx) ? '✅' : '○';
+  }
+  updateReviewStatus();
+}
+
+function markAllPassed() {
+  // 标记全部通过
+  allCases.forEach((_, idx) => keptCases.add(idx));
+  markedForDeletion.clear();
+  renderCasesList();
+  updateReviewStatus();
+  // 触发学习
+  triggerAutoLearn(5);
+  document.getElementById('feedback-thanks').style.display = 'inline';
+}
+
+function showDeleteSelector() {
+  // 显示删除选择模式
+  markedForDeletion.clear();
+  // 高亮所有行让用户选择
+  document.querySelectorAll('#table-body tr').forEach(tr => {
+    tr.style.borderLeft = '3px solid var(--danger)';
+    tr.onclick = () => {
+      const idx = parseInt(tr.dataset.idx);
+      if (markedForDeletion.has(idx)) {
+        markedForDeletion.delete(idx);
+        tr.style.borderLeft = '3px solid transparent';
+        tr.style.background = keptCases.has(idx) ? 'rgba(74, 222, 128, 0.15)' : '';
+      } else {
+        markedForDeletion.add(idx);
+        tr.style.borderLeft = '3px solid var(--danger)';
+        tr.style.background = 'rgba(248, 113, 113, 0.1)';
+      }
+      updateDeleteCount();
+    };
+  });
+  // 显示确认按钮
+  const actionsBar = document.getElementById('case-actions-bar');
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'case-action-btn';
+  confirmBtn.textContent = '✅ 确认删除';
+  confirmBtn.onclick = confirmDeletion;
+  confirmBtn.id = 'confirm-delete-btn';
+  actionsBar.appendChild(confirmBtn);
+  
+  // 显示取消按钮
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'case-action-btn';
+  cancelBtn.textContent = '❌ 取消';
+  cancelBtn.onclick = cancelDeleteMode;
+  cancelBtn.id = 'cancel-delete-btn';
+  actionsBar.appendChild(cancelBtn);
+  
+  // 隐藏原来的按钮
+  document.querySelector('[onclick="selectAllCases()"]').style.display = 'none';
+  document.querySelector('[onclick="deleteSelectedCases()"]').style.display = 'none';
+}
+
+function updateDeleteCount() {
+  const btn = document.getElementById('confirm-delete-btn');
+  if (btn) {
+    btn.textContent = '✅ 确认删除 (' + markedForDeletion.size + ')';
+  }
+}
+
+function confirmDeletion() {
+  // 删除标记的用例
+  if (markedForDeletion.size === 0) {
+    alert('请先选择要删除的用例');
+    return;
+  }
+  // 从大到小排序删除
+  const sorted = [...markedForDeletion].sort((a, b) => b - a);
+  sorted.forEach(idx => allCases.splice(idx, 1));
+  keptCases.clear();
+  markedForDeletion.clear();
+  renderCasesList();
+  cancelDeleteMode();
+  // 触发学习（负面）
+  triggerAutoLearn(2);
+  document.getElementById('feedback-thanks').style.display = 'inline';
+}
+
+function cancelDeleteMode() {
+  markedForDeletion.clear();
+  // 恢复行样式
+  document.querySelectorAll('#table-body tr').forEach(tr => {
+    tr.style.borderLeft = 'none';
+    tr.style.background = '';
+    tr.onclick = null;
+  });
+  // 删除确认/取消按钮
+  ['confirm-delete-btn', 'cancel-delete-btn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.remove();
+  });
+  // 显示原来的按钮
+  document.querySelector('[onclick="selectAllCases()"]').style.display = '';
+  document.querySelector('[onclick="deleteSelectedCases()"]').style.display = '';
+}
+
+function updateReviewStatus() {
+  const passed = keptCases.size;
+  const total = allCases.length;
+  document.getElementById('feedback-thanks').textContent = '已通过 ' + passed + '/' + total;
+}
+
+// ── Single Case Edit & Feedback ─────────────────────────────
+let currentEditIdx = null;
+let modificationHistory = {};  // { caseId: [{timestamp, type, original, modified, userFeedback}] }
+
+function openEditCase(idx) {
+  currentEditIdx = idx;
+  const caseData = allCases[idx];
+  const fields = Object.keys(caseData);
+  
+  let bodyHtml = '';
+  fields.forEach(field => {
+    if (field.startsWith('_')) return;  // 跳过内部字段
+    bodyHtml += `
+      <div class="case-field">
+        <label>${field}</label>
+        <textarea id="edit-field-${field}" rows="2">${caseData[field] || ''}</textarea>
+      </div>
+    `;
+  });
+  
+  // 显示修改历史
+  const caseId = caseData.id || `TC_${idx + 1}`;
+  const history = modificationHistory[caseId] || [];
+  let historyHtml = '';
+  if (history.length > 0) {
+    historyHtml = `
+      <div class="modification-history">
+        <div class="modification-history-title">修改历史（${history.length}次）</div>
+        ${history.map(h => `
+          <div class="modification-item">
+            <span style="color:var(--text-muted)">${h.type === 'edit' ? '✏️ 手动编辑' : '💬 AI反馈'}</span>
+            ${h.userFeedback ? ` - "${h.userFeedback}"` : ''}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+  
+  document.getElementById('case-modal-title').textContent = '编辑用例 ' + caseId;
+  document.getElementById('case-modal-body').innerHTML = bodyHtml + historyHtml;
+  document.getElementById('case-modal-footer').innerHTML = `
+    <button class="case-modal-btn secondary" onclick="closeCaseModal()">取消</button>
+    <button class="case-modal-btn ai" onclick="submitCaseFeedback()">💬 AI修改</button>
+    <button class="case-modal-btn primary" onclick="saveEditCase()">✏️ 保存</button>
+  `;
+  
+  document.getElementById('case-modal').classList.add('open');
+}
+
+
+function showToast(message) {
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;top:70px;right:20px;background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);padding:10px 16px;border-radius:6px;font-family:var(--mono);font-size:12px;z-index:3000';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+
+// 标记用例通过并学习修改历史
+function markCasePassed(idx) {
+  keptCases.add(idx);
+  const caseData = allCases[idx];
+  const caseId = caseData.id || `TC_${idx + 1}`;
+  const history = modificationHistory[caseId];
+  
+  // 如果有修改历史，触发学习
+  if (history && history.length > 0) {
+    // 构建学习内容
+    const feedbackParts = [];
+    history.forEach(h => {
+      if (h.type === 'feedback') {
+        feedbackParts.push(`用户反馈: ${h.userFeedback}`);
+        feedbackParts.push(`原始用例: ${JSON.stringify(h.original)}`);
+        feedbackParts.push(`改进后: ${JSON.stringify(h.modified)}`);
+      }
+    });
+    
+    if (feedbackParts.length > 0) {
+      triggerLearnFromModification(feedbackParts.join('\n'));
+    }
+  }
+  
+  // 更新行样式
+  const tr = document.querySelector(`tr[data-idx="${idx}"]`);
+  if (tr) {
+    keptCases.add(idx);
+    tr.className = 'case-kept';
+    tr.querySelector('button').textContent = '✅';
+  }
+  updateReviewStatus();
+}
+
+async function triggerLearnFromModification(feedback) {
+  try {
+    await fetch('/api/rules/learn', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source: 'feedback',
+        feedback: feedback,
+        cases: [],
+        labels: {}
+      })
+    });
+  } catch (e) {
+    console.error('学习失败', e);
+  }
+}
+
+function deleteCase(idx) {
+  if (confirm('确定要删除这条用例吗？')) {
+    allCases.splice(idx, 1);
+    keptCases.delete(idx);
+    markedForDeletion.delete(idx);
+    // 重新渲染
+    renderCasesList();
+  }
+}
+
+function selectAllCases() {
+  // 复用为"标记全部有问题"
+  if (markedForDeletion.size === allCases.length) {
+    markedForDeletion.clear();
+  } else {
+    markedForDeletion = new Set(allCases.map((_, i) => i));
+  }
+  // 更新行的样式
+  document.querySelectorAll('#table-body tr').forEach((tr, idx) => {
+    if (markedForDeletion.has(idx)) {
+      tr.style.borderLeft = '3px solid var(--danger)';
+      tr.style.background = 'rgba(248, 113, 113, 0.1)';
+    } else {
+      tr.style.borderLeft = 'none';
+      tr.style.background = '';
+    }
+  });
+  updateDeleteCount();
+}
+
+function deleteSelectedCases() {
+  // 改为显示删除选择模式
+  showDeleteSelector();
+}
+
+// ── Continue Generate ─────────────────────────────────────────
+function showContinueGenerate() {
+  if (allCases.length === 0) {
+    alert('先生成一些用例后再继续生成');
+    return;
+  }
+  document.getElementById('current-case-count').textContent = allCases.length;
+  document.getElementById('continue-count').value = Math.min(5, 20 - allCases.length);
+  document.getElementById('continue-hint').value = '';
+  document.getElementById('continue-modal').classList.add('open');
+}
+
+function closeContinueModal() {
+  document.getElementById('continue-modal').classList.remove('open');
+}
+
+async function doContinueGenerate() {
+  const count = parseInt(document.getElementById('continue-count').value) || 3;
+  const hint = document.getElementById('continue-hint').value.trim();
+
+  closeContinueModal();
+
+  const requirement = document.getElementById('requirement').value.trim();
+  const example = document.getElementById('example').value.trim();
+
+  if (!requirement || !example) {
+    alert('需求和示例不能为空');
+    return;
+  }
+
+  // 获取聊天上下文
+  const chatContext = getChatContext();
+
+  // 构建追加的提示
+  const existingIds = allCases.map(c => c[Object.keys(c)[0]]).join(', ');
+  const appendHint = hint 
+    ? '\n\n【补充要求】\n' + hint 
+    : '\n\n【补充要求】\n继续生成不同的测试用例，不要重复已有的用例 ID：' + existingIds;
+
+  setLoading(true);
+  hideError();
+
+  try {
+    const r = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        requirement: requirement + chatContext + appendHint, 
+        example, 
+        count 
+      }),
+    });
+    const data = await r.json();
+    
+    if (!data.success) {
+      showError(data.error || '生成失败', data.debug);
+      return;
+    }
+
+    // 追加新用例
+    const newCases = data.cases || [];
+    allCases = [...allCases, ...newCases];
+    
+    // 重新渲染
+    renderCasesList();
+    
+    // 显示成功提示
+    const successMsg = document.createElement('div');
+    successMsg.style.cssText = 'position:fixed;top:70px;right:20px;background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);padding:12px 20px;border-radius:8px;font-family:var(--mono);font-size:12px;z-index:3000';
+    successMsg.textContent = '✅ 成功追加 ' + newCases.length + ' 条用例';
+    document.body.appendChild(successMsg);
+    setTimeout(() => successMsg.remove(), 3000);
+
+  } catch (e) {
+    showError('生成失败：' + e.message);
+  } finally {
+    setLoading(false);
+  }
 }
 
 // ── Export ──────────────────────────────────────────────────
@@ -894,9 +2567,242 @@ function downloadBlob(blob, name) {
 // ── Feedback ────────────────────────────────────────────────
 async function submitFeedback(rating) {
   try {
+    // 提交基础反馈
     await fetch('/api/feedback', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({rating}) });
     document.getElementById('feedback-thanks').style.display = 'inline';
+
+    // 触发自动学习
+    triggerAutoLearn(rating);
   } catch {}
+}
+
+// ── Auto Learn ─────────────────────────────────────────────
+let isLearning = false;
+
+async function triggerAutoLearn(rating) {
+  if (isLearning) return;
+  isLearning = true;
+
+  const panel = document.getElementById('learning-panel');
+  const spinner = document.getElementById('learning-spinner');
+  const status = document.getElementById('learning-status');
+  const result = document.getElementById('learning-result');
+  const successDiv = document.getElementById('learning-success');
+  const discardedDiv = document.getElementById('learning-discarded');
+
+  // 显示学习面板
+  panel.classList.add('visible');
+  spinner.style.display = 'block';
+  status.textContent = 'Harness 正在学习...';
+  result.style.display = 'none';
+
+  try {
+    // 构建反馈文本
+    const feedbackText = rating >= 4 ? '用户对本次生成的用例质量表示满意（👍）' : '用户对本次生成的用例质量不满意（👎）';
+
+    // 调用自动学习 API
+    const resp = await fetch('/api/rules/learn', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source: 'feedback',
+        feedback: feedbackText,
+        cases: currentResult?.cases || [],
+        labels: {}
+      })
+    });
+    const data = await resp.json();
+
+    // 显示学习结果
+    spinner.style.display = 'none';
+
+    if (data.success && data.learned_count > 0) {
+      status.textContent = '✅ 学习完成！';
+
+      // 构建学习成功消息
+      let html = `入库 <strong>${data.learned_count}</strong> 条规则`;
+      if (data.discarded_count > 0) {
+        html += `，过滤 <strong>${data.discarded_count}</strong> 条低质量规则`;
+      }
+      successDiv.innerHTML = html;
+
+      // 显示学习到的规则
+      if (data.rules && data.rules.length > 0) {
+        let rulesHtml = '<div style="margin-top:8px">';
+        data.rules.slice(0, 3).forEach(rule => {
+          rulesHtml += `
+            <div class="learned-rule">
+              <span class="learned-rule-badge">${rule.type || 'general'}</span>
+              <span class="learned-rule-text">${rule.rule_text.substring(0, 50)}${rule.rule_text.length > 50 ? '...' : ''}</span>
+            </div>
+          `;
+        });
+        if (data.rules.length > 3) {
+          rulesHtml += `<div style="color:var(--text-muted);font-size:10px;margin-top:4px">还有 ${data.rules.length - 3} 条...</div>`;
+        }
+        rulesHtml += '</div>';
+        successDiv.innerHTML += rulesHtml;
+      }
+
+      // 显示被过滤的规则
+      if (data.discarded && data.discarded.length > 0) {
+        let discardedHtml = '<div class="learning-discarded">';
+        discardedHtml += '<div style="margin-bottom:4px">❌ 已过滤：</div>';
+        data.discarded.slice(0, 2).forEach(r => {
+          discardedHtml += `<div>• ${r.rule_text.substring(0, 40)}... (${r.reason})</div>`;
+        });
+        discardedHtml += '</div>';
+        discardedDiv.innerHTML = discardedHtml;
+      }
+
+      // 更新 Harness 状态
+      loadHarnessStatus();
+    } else {
+      status.textContent = data.message || '学习完成，暂无新规则';
+      successDiv.textContent = '';
+    }
+
+    result.style.display = 'block';
+
+    // 3秒后自动隐藏
+    setTimeout(() => {
+      panel.classList.remove('visible');
+    }, 5000);
+
+  } catch (e) {
+    spinner.style.display = 'none';
+    status.textContent = '学习失败：' + e.message;
+    result.style.display = 'block';
+  } finally {
+    isLearning = false;
+  }
+}
+
+// ── Rules Manager ───────────────────────────────────────────
+function openRulesModal() {
+  const modal = document.getElementById('rules-modal');
+  modal.classList.add('open');
+  loadRulesList();
+}
+
+function closeRulesModal() {
+  document.getElementById('rules-modal').classList.remove('open');
+}
+
+async function loadRulesList() {
+  try {
+    // 获取统计
+    const statsResp = await fetch('/api/rules/stats');
+    const statsData = await statsResp.json();
+    if (statsData.success) {
+      document.getElementById('rules-total').textContent = statsData.stats.total;
+      document.getElementById('rules-active').textContent = statsData.stats.active;
+      document.getElementById('rules-deprecated').textContent = statsData.stats.deprecated;
+    }
+
+    // 获取规则列表
+    const resp = await fetch('/api/rules');
+    const data = await resp.json();
+    const list = document.getElementById('rules-list');
+
+    if (!data.rules || data.rules.length === 0) {
+      list.innerHTML = `
+        <div class="rules-empty">
+          <div class="rules-empty-icon">🦆</div>
+          <div>Harness 还没有学习到规则</div>
+          <div style="margin-top:8px;color:var(--text-dim)">开始使用后，规则会出现在这里</div>
+        </div>
+      `;
+      return;
+    }
+
+    let html = '';
+    data.rules.forEach(rule => {
+      const isDeprecated = rule.is_deprecated;
+      html += `
+        <div class="rule-item ${isDeprecated ? 'deprecated' : ''}" data-id="${rule.id}">
+          <div class="rule-item-header">
+            <span class="rule-type-badge">${rule.type || 'general'}</span>
+            ${isDeprecated ? '<span class="rule-deprecated-badge">已淘汰</span>' : ''}
+          </div>
+          <div class="rule-text">${rule.text || rule.rule_text}</div>
+          <div class="rule-meta">
+            <span>使用：${rule.stats?.used || 0}</span>
+            <span>有效率：${rule.stats?.rate || '50'}%</span>
+            <span>来源：${rule.source || '未知'}</span>
+          </div>
+          <div class="rule-actions">
+            ${isDeprecated
+              ? `<button class="rule-action-btn" onclick="toggleRule('${rule.id}', false)">✅ 启用</button>`
+              : `<button class="rule-action-btn" onclick="toggleRule('${rule.id}', true)">❌ 禁用</button>`
+            }
+            <button class="rule-action-btn danger" onclick="deleteRule('${rule.id}')">🗑️ 删除</button>
+          </div>
+        </div>
+      `;
+    });
+    list.innerHTML = html;
+
+  } catch (e) {
+    console.error('加载规则列表失败', e);
+  }
+}
+
+async function toggleRule(ruleId, isDeprecated) {
+  try {
+    await fetch('/api/rules/detail', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: ruleId, is_deprecated: isDeprecated })
+    });
+    loadRulesList();
+  } catch (e) {
+    alert('操作失败：' + e.message);
+  }
+}
+
+async function deleteRule(ruleId) {
+  if (!confirm('确定要删除这条规则吗？')) return;
+  try {
+    await fetch('/api/rules/detail', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: ruleId })
+    });
+    loadRulesList();
+  } catch (e) {
+    alert('删除失败：' + e.message);
+  }
+}
+
+async function cleanupDeprecatedRules() {
+  try {
+    const resp = await fetch('/api/rules/cleanup', { method: 'POST' });
+    const data = await resp.json();
+    if (data.success) {
+      alert(`已清理 ${data.deleted_count} 条已淘汰规则`);
+      loadRulesList();
+    }
+  } catch (e) {
+    alert('清理失败：' + e.message);
+  }
+}
+
+async function exportRules() {
+  try {
+    const resp = await fetch('/api/rules/export');
+    const data = await resp.json();
+    if (data.success) {
+      const blob = new Blob([JSON.stringify(data.rules, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'test-case-rules.json';
+      a.click();
+    }
+  } catch (e) {
+    alert('导出失败：' + e.message);
+  }
 }
 
 // ── Helpers ─────────────────────────────────────────────────
@@ -906,10 +2812,136 @@ function setLoading(on) {
   document.getElementById('gen-label').textContent = on ? '生成中...' : '▶ 生成测试用例';
   document.getElementById('progress-bar').style.display = on ? 'block' : 'none';
 }
-function showError(msg) {
-  const b = document.getElementById('error-banner');
-  b.textContent = msg; b.style.display = 'block';
+let lastError = '';  // 保存最后一次错误
+let lastErrorType = '';  // 错误类型
+let lastErrorSuggestion = '';  // 解决建议
+let lastDebug = null;  // 保存调试信息
+
+function showError(msg, debug = null, errorType = '', errorSuggestion = '') {
+  lastError = msg;
+  lastErrorType = errorType;
+  lastErrorSuggestion = errorSuggestion;
+  lastDebug = debug;
+  
+  const banner = document.getElementById('error-banner');
+  const header = banner.querySelector('.error-header');
+  const body = document.getElementById('error-body');
+  const hint = banner.querySelector('.error-hint');
+  
+  // 设置错误标题（根据错误类型）
+  let errorTitle = '⚠️ 生成失败';
+  if (errorType) {
+    const typeMap = {
+      'AUTH_ERROR': '🔑 鉴权失败',
+      'NETWORK_ERROR': '🌐 网络错误',
+      'TIMEOUT': '⏱️ 请求超时',
+      'RATE_LIMIT': '📈 请求频率超限',
+      'SERVER_ERROR': '🖥️ 服务端错误',
+      'JSON_PARSE_ERROR': '📋 JSON 格式错误',
+      'HTTP_ERROR': '🔄 HTTP 错误',
+      'LOCAL_MODEL_LIMIT': '🤖 本地模型限制',
+      'LOCAL_MODEL_SLOW': '🐢 本地模型较慢',
+      'CONNECTION_ERROR': '🔌 连接失败'
+    };
+    errorTitle = typeMap[errorType] || '⚠️ ' + errorType;
+  }
+  header.innerHTML = `<span>${errorTitle}</span><button class="error-copy-btn" onclick="copyError()">📋 复制错误信息</button>`;
+  
+  // 设置错误内容
+  let errorContent = msg;
+  if (debug && debug.raw_output_preview) {
+    errorContent += '\n\n【LLM 输出预览】\n' + debug.raw_output_preview.substring(0, 300);
+  }
+  body.textContent = errorContent;
+  
+  // 设置建议
+  if (errorSuggestion) {
+    hint.innerHTML = `<strong>💡 解决建议：</strong>${errorSuggestion}`;
+  } else if (debug && debug.raw_output_preview) {
+    hint.innerHTML = `<strong>🔍 LLM 输出预览（帮助排查）：</strong><br>${debug.raw_output_preview.replace(/</g, "&lt;").replace(/>/g, "&gt;").substring(0, 200)}...`;
+  } else {
+    hint.innerHTML = '如果问题持续出现，请复制以上信息发给开发者排查';
+  }
+  
+  banner.classList.add('visible');
   document.getElementById('empty-state').style.display = 'none';
+}
+
+function copyError() {
+  if (!lastError) return;
+  
+  // 构建完整的错误信息
+  const timestamp = new Date().toLocaleString('zh-CN');
+  let errorInfo = `【AI测试用例生成器 - 错误报告】
+时间：${timestamp}
+`;
+
+  // 添加错误类型
+  if (lastErrorType) {
+    errorInfo += `错误类型：${lastErrorType}\n`;
+  }
+  
+  errorInfo += `错误信息：
+${lastError}`;
+
+  // 添加解决建议
+  if (lastErrorSuggestion) {
+    errorInfo += `\n\n解决建议：
+${lastErrorSuggestion}`;
+  }
+
+  // 如果有调试信息，添加 LLM 输出预览
+  if (lastDebug && lastDebug.raw_output_preview) {
+    errorInfo += `
+
+---
+【LLM 输出预览】
+${lastDebug.raw_output_preview}
+（完整长度：${lastDebug.raw_output_length || '?'} 字符）`;
+  }
+
+  errorInfo += `
+
+---
+请将以上信息发送给开发者排查
+`;
+
+  navigator.clipboard.writeText(errorInfo).then(() => {
+
+  navigator.clipboard.writeText(errorInfo).then(() => {
+    // 临时改变按钮文字
+    const btn = document.querySelector('.error-copy-btn');
+    const originalText = btn.textContent;
+    btn.textContent = '✅ 已复制';
+    setTimeout(() => { btn.textContent = originalText; }, 2000);
+  }).catch(() => {
+    // 降级：使用传统方法
+    const textarea = document.createElement('textarea');
+    textarea.value = lastError;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    alert('已复制到剪贴板');
+  });
+}
+
+  navigator.clipboard.writeText(errorInfo).then(() => {
+    // 临时改变按钮文字
+    const btn = document.querySelector('.error-copy-btn');
+    const originalText = btn.textContent;
+    btn.textContent = '✅ 已复制';
+    setTimeout(() => { btn.textContent = originalText; }, 2000);
+  }).catch(() => {
+    // 降级：使用传统方法
+    const textarea = document.createElement('textarea');
+    textarea.value = lastError;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    alert('已复制到剪贴板');
+  });
 }
 function hideError() { document.getElementById('error-banner').style.display = 'none'; }
 function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }

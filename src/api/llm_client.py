@@ -18,6 +18,32 @@ import re
 import urllib.request
 import urllib.error
 from typing import Optional
+from dataclasses import dataclass
+
+
+@dataclass
+class LLMError(Exception):
+    """LLM 调用错误"""
+    error_type: str = "UNKNOWN"
+    message: str = ""
+    details: str = ""
+    suggestion: str = ""
+    
+    def __str__(self):
+        parts = [self.message]
+        if self.details:
+            parts.append(f"详情：{self.details}")
+        if self.suggestion:
+            parts.append(f"建议：{self.suggestion}")
+        return "\n".join(parts)
+    
+    def to_dict(self):
+        return {
+            "error_type": self.error_type,
+            "message": self.message,
+            "details": self.details,
+            "suggestion": self.suggestion
+        }
 
 
 # ── 供应商路由规则 ─────────────────────────────────────────────────
@@ -123,8 +149,27 @@ class LLMClient:
         else:
             raw = self._chat_openai_compat(system_prompt, user_message)
         
+        # 检查 LLM 返回是否为空
+        if not raw or not isinstance(raw, str):
+            raise RuntimeError("LLM 返回内容为空，可能是 API 调用失败或模型输出被截断")
+        
         # 过滤思考过程
-        return strip_thinking_content(raw)
+        result = strip_thinking_content(raw)
+        
+        # 过滤后检查是否为空
+        if not result:
+            # 检查是否是本地模型限制
+            is_local = any(x in self.base_url for x in ['localhost', '127.0.0.1', 'ollama'])
+            if is_local:
+                raise LLMError(
+                    error_type="LOCAL_MODEL_LIMIT",
+                    message="本地模型输出被截断",
+                    details="输出内容过长，触发了本地模型的截断限制",
+                    suggestion="建议：1) 减少生成数量（5-7条）；2) 简化需求描述；3) 使用云端模型获得更好效果"
+                )
+            raise RuntimeError(f"LLM 返回内容在移除思考过程后为空。原始内容：{raw[:200]}...")
+        
+        return result
 
     def health_check(self) -> dict:
         try:
@@ -217,20 +262,84 @@ class LLMClient:
         except urllib.error.HTTPError as e:
             try:
                 err_body = e.read().decode("utf-8", errors="replace")
-                err_msg = json.loads(err_body).get("error", {}).get("message", err_body)
+                try:
+                    err_data = json.loads(err_body)
+                    err_msg = err_data.get("error", {}).get("message", err_body)
+                except:
+                    err_msg = err_body
             except Exception:
                 err_msg = str(e)
 
             if e.code == 401:
-                raise RuntimeError(
-                    f"鉴权失败（HTTP 401）：API Key 无效或未配置。\n"
-                    f"请在 config.json 填写 api_key，或设置环境变量 LLM_API_KEY。\n"
-                    f"详情：{err_msg}"
+                raise LLMError(
+                    error_type="AUTH_ERROR",
+                    message="鉴权失败（HTTP 401）",
+                    details=f"API Key 无效或未配置",
+                    suggestion="在 config.json 填写 api_key，或设置环境变量 LLM_API_KEY"
+                ) from e
+            elif e.code == 403:
+                raise LLMError(
+                    error_type="FORBIDDEN",
+                    message="访问被拒绝（HTTP 403）",
+                    details=err_msg,
+                    suggestion="检查 API 权限设置，确认模型是否可用"
+                ) from e
+            elif e.code == 404:
+                raise LLMError(
+                    error_type="NOT_FOUND",
+                    message="资源不存在（HTTP 404）",
+                    details=f"API 地址或模型名称可能错误：{self.model_name}",
+                    suggestion="检查 config.json 中的 base_url 和 model_name"
                 ) from e
             elif e.code == 429:
-                raise RuntimeError(f"请求频率超限（HTTP 429）：{err_msg}") from e
+                raise LLMError(
+                    error_type="RATE_LIMIT",
+                    message="请求频率超限（HTTP 429）",
+                    details=err_msg,
+                    suggestion="稍后再试，或降低请求频率"
+                ) from e
+            elif e.code == 500:
+                raise LLMError(
+                    error_type="SERVER_ERROR",
+                    message="AI 服务端错误（HTTP 500）",
+                    details="AI 服务端内部错误",
+                    suggestion="稍后再试，可能是服务器临时故障"
+                ) from e
+            elif e.code in (502, 503):
+                raise LLMError(
+                    error_type="SERVICE_UNAVAILABLE",
+                    message=f"AI 服务暂时不可用（HTTP {e.code}）",
+                    details="服务可能正在维护或过载",
+                    suggestion="稍后再试"
+                ) from e
             else:
-                raise RuntimeError(f"API 返回错误（HTTP {e.code}）：{err_msg}") from e
+                raise LLMError(
+                    error_type="HTTP_ERROR",
+                    message=f"API 返回错误（HTTP {e.code}）",
+                    details=err_msg,
+                    suggestion="检查 API 配置是否正确"
+                ) from e
 
         except urllib.error.URLError as e:
-            raise RuntimeError(f"网络连接失败：{e}\n请检查 API 地址是否正确：{self.base_url}") from e
+            raise LLMError(
+                error_type="NETWORK_ERROR",
+                message="网络连接失败",
+                details=str(e),
+                suggestion=f"请检查 API 地址：{self.base_url}，确认网络是否正常"
+            ) from e
+
+        except TimeoutError:
+            is_local = any(x in self.base_url for x in ['localhost', '127.0.0.1', 'ollama'])
+            if is_local:
+                raise LLMError(
+                    error_type="LOCAL_MODEL_SLOW",
+                    message="本地模型响应超时",
+                    details=f"连接 {self.base_url} 超过 {self.timeout} 秒",
+                    suggestion="本地模型性能有限，建议：1) 减少生成数量到 5 条；2) 简化需求描述；3) 耐心等待；4) 考虑使用云端模型"
+                )
+            raise LLMError(
+                error_type="TIMEOUT",
+                message="请求超时",
+                details=f"连接 {self.base_url} 超时（{self.timeout}秒）",
+                suggestion="检查网络连接，或尝试增加 config.json 中的 timeout 配置"
+            ) from e

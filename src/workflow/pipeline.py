@@ -10,6 +10,7 @@ from pathlib import Path
 
 from pathlib import Path
 from src.api.llm_client import LLMClient
+from src.api.llm_client import LLMError
 from src.tools.formatter import FormatValidator
 from src.tools.exporter import Exporter
 from src.tools.deduplicator import deduplicate
@@ -201,10 +202,34 @@ class GenerationPipeline:
                 result["review"] = review_result
             return result
 
+        except LLMError as e:
+            # LLM 调用错误（带分类）
+            return self._error_result(
+                message=str(e),
+                state=state,
+                retries=retries,
+                error_type=e.error_type,
+                error_details=e.details,
+                error_suggestion=e.suggestion
+            )
         except ConnectionError as e:
-            return self._error_result(str(e), state, retries)
+            return self._error_result(
+                message=f"连接失败：{e}",
+                state=state,
+                retries=retries,
+                error_type="CONNECTION_ERROR",
+                error_details=str(e),
+                error_suggestion="检查 LLM API 地址是否正确，网络是否正常"
+            )
         except TimeoutError as e:
-            return self._error_result(str(e), state, retries)
+            return self._error_result(
+                message=f"请求超时：{e}",
+                state=state,
+                retries=retries,
+                error_type="TIMEOUT",
+                error_details=str(e),
+                error_suggestion="增加 config.json 中的 timeout 配置，或检查网络"
+            )
         except Exception as e:
             return self._error_result(f"内部错误：{e}", state, retries)
 
@@ -284,8 +309,10 @@ class GenerationPipeline:
         retries = 0
         current_user_msg = user_msg
 
+        last_raw = None  # 保存最后一次原始输出用于调试
         for attempt in range(self.max_retries + 1):
             raw = self.llm.chat(system_prompt, current_user_msg)
+            last_raw = raw  # 保存用于错误报告
 
             # 解析 JSON
             cases = self.validator.extract_json(raw)
@@ -296,7 +323,9 @@ class GenerationPipeline:
                     retries += 1
                     continue
                 else:
-                    raise RuntimeError(f"LLM 连续 {attempt+1} 次输出非法 JSON，已放弃")
+                    # 提供更详细的错误信息
+                    error_detail = self._build_json_error_detail(raw)
+                    raise RuntimeError(f"LLM 连续 {attempt+1} 次输出非法 JSON，已放弃\n\n{error_detail}")
 
             # 格式校验
             if expected_fields:
@@ -335,19 +364,52 @@ class GenerationPipeline:
         return cases
 
     def _estimate_tokens(self, text: str) -> int:
-        """估算 token 数量（简单估算：1 token ≈ 4 字符）"""
-        return len(text) // 4
+        """
+        估算 token 数量
+        中文约 1.5-2 字符/token，英文约 4 字符/token
+        混合文本取中间值
+        """
+        if not text:
+            return 0
+        
+        # 分别估算中英文字符数
+        chinese_chars = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
+        other_chars = len(text) - chinese_chars
+        
+        # 中文 1.8 字符/token，英文/数字/符号 3.5 字符/token
+        chinese_tokens = chinese_chars / 1.8
+        other_tokens = other_chars / 3.5
+        
+        return int(chinese_tokens + other_tokens)
 
     def _split_into_batches(self, total_count: int, prompt_text: str = "") -> list[int]:
-        """将总数量拆分为批次列表，基于 token 估算"""
-        max_tokens = 6000
-        estimated_prompt_tokens = self._estimate_tokens(prompt_text if prompt_text else "")
-        available_tokens = max_tokens - estimated_prompt_tokens
-
-        if available_tokens <= 0:
-            available_tokens = 2000
-
-        max_cases_per_batch = min(self.batch_size, available_tokens // 200)
+        """将总数量拆分为批次列表，基于精确 token 估算"""
+        # 保守估计：prompt 占总 context 的 40%
+        # 实际应该检查 model 的 context window，但暂时用这个估算
+        prompt_tokens = self._estimate_tokens(prompt_text) if prompt_text else 0
+        
+        # 如果没有提供 prompt 文本，用经验值估算（一般 prompt 约 1000-2000 tokens）
+        if prompt_tokens == 0:
+            prompt_tokens = 1800
+        
+        # 考虑 system prompt（一般 500-1000 tokens）
+        system_tokens = 800
+        total_input_tokens = prompt_tokens + system_tokens
+        
+        # 从 config 获取 max_tokens 作为输出上限
+        max_tokens = self.config.get("llm", {}).get("max_tokens", 6000)
+        
+        # 预留 20% buffer 防止截断
+        available_output_tokens = (max_tokens - total_input_tokens) * 0.8
+        
+        # 每条用例约 150-300 tokens（中文字段多的话更多）
+        tokens_per_case = 250
+        
+        max_cases_per_batch = max(1, int(available_output_tokens // tokens_per_case))
+        max_cases_per_batch = min(max_cases_per_batch, self.batch_size)
+        
+        # 确保每批至少 2 条，太少效率低
+        max_cases_per_batch = max(2, max_cases_per_batch)
 
         if total_count <= max_cases_per_batch:
             return [total_count]
@@ -390,8 +452,39 @@ class GenerationPipeline:
         except Exception:
             pass  # 历史保存失败不影响主流程
 
-    def _error_result(self, message: str, state: str, retries: int) -> dict:
-        return {
+    def _build_json_error_detail(self, raw: str) -> str:
+        """构建 JSON 解析错误的详细信息"""
+        if not raw:
+            return "LLM 返回内容为空"
+        
+        # 截取前300字符
+        preview = raw[:300]
+        if len(raw) > 300:
+            preview += "..."
+        
+        return f"""【LLM 原始输出片段】
+{preview}
+
+【可能原因】
+1. 输出包含代码围栏（如 ```json...```），需要去掉
+2. 输出包含思考过程（如 <thinking>...</thinking>），需要移除
+3. JSON 格式不完整或有多余字符
+4. 输出被截断，请尝试减少生成数量"""
+
+    def _error_result(self, message: str, state: str, retries: int, raw_output: str = None, error_type: str = None, error_details: str = None, error_suggestion: str = None) -> dict:
+        """
+        构建错误结果
+        
+        Args:
+            message: 错误信息
+            state: 当前状态
+            retries: 重试次数
+            raw_output: 原始 LLM 输出（如果有）
+            error_type: 错误类型
+            error_details: 错误详情
+            error_suggestion: 解决建议
+        """
+        result = {
             "success": False,
             "cases": [],
             "markdown": "",
@@ -401,6 +494,21 @@ class GenerationPipeline:
             "retries": retries,
             "count": 0,
         }
+        
+        # 添加错误类型分类
+        if error_type:
+            result["error_type"] = error_type
+            result["error_details"] = error_details or ""
+            result["error_suggestion"] = error_suggestion or ""
+        
+        # 添加原始输出用于调试（截取前500字符）
+        if raw_output:
+            result["debug"] = {
+                "raw_output_preview": raw_output[:500] if len(raw_output) > 500 else raw_output,
+                "raw_output_length": len(raw_output),
+            }
+        
+        return result
 
     def get_history(self, limit: int = 20, offset: int = 0) -> list:
         """查询生成历史"""

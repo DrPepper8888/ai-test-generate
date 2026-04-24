@@ -87,6 +87,9 @@ class MemoryStore:
         source: str,
         source_detail: str = "",
         tags: List[str] = None,
+        quality_score: float = 0.0,
+        quality_reason: str = "",
+        improved_text: str = ""
     ) -> str:
         """
         添加新规则
@@ -97,6 +100,9 @@ class MemoryStore:
             source: 来源
             source_detail: 来源详情
             tags: 标签列表
+            quality_score: AI 审核评分 (0-1)
+            quality_reason: AI 审核理由
+            improved_text: AI 改进后的文本
             
         Returns:
             rule_id: 新规则ID，若已存在则返回原ID
@@ -127,6 +133,9 @@ class MemoryStore:
             source=source,
             source_detail=source_detail,
             created_at=self._now(),
+            quality_score=quality_score,
+            quality_reason=quality_reason,
+            improved_text=improved_text
         )
 
         rules.append(rule)
@@ -139,6 +148,7 @@ class MemoryStore:
         rule_id: str,
         is_effective: bool,
         feedback: str = "",
+        auto_check_deprecation: bool = True
     ):
         """
         记录规则使用反馈
@@ -147,6 +157,7 @@ class MemoryStore:
             rule_id: 规则ID
             is_effective: 这次使用是否有效（正向反馈）
             feedback: 反馈内容（可选）
+            auto_check_deprecation: 是否自动检查并淘汰低质量规则
         """
         rules = self.load_rules()
 
@@ -161,6 +172,13 @@ class MemoryStore:
                     if feedback:
                         self._save_ineffective_feedback(rule_id, feedback)
                 rule.last_used_at = self._now()
+                
+                # 自动检查是否应该淘汰
+                if auto_check_deprecation and rule.should_auto_deprecate():
+                    rule.is_deprecated = True
+                    rule.auto_deprecated = True
+                    rule.deprecate_reason = f"使用 {rule.use_count} 次后有效率仅 {rule.effective_rate * 100:.0f}%"
+                
                 break
 
         self.save_rules(rules)

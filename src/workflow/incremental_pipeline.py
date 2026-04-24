@@ -49,7 +49,7 @@ class IncrementalPipeline:
             requirement: 需求描述
             example: 示例用例
             target_count: 目标数量
-            batch_size: 每批数量（根据 max_tokens 自动调整）
+            batch_size: 每批数量上限（会根据 token 限制自动调整）
             
         Returns:
             {
@@ -60,13 +60,24 @@ class IncrementalPipeline:
                 "error": str (可选)
             }
         """
+        # 估算 prompt 长度，调整 batch_size
+        prompt_text = requirement + "\n" + example
+        prompt_tokens = self._estimate_tokens(prompt_text)
+        
+        # 根据 max_tokens 和 prompt 长度动态计算 batch_size
+        max_output_tokens = self.config.get("llm", {}).get("max_tokens", 6000)
+        available_tokens = (max_output_tokens - prompt_tokens) * 0.8
+        tokens_per_case = 250
+        dynamic_batch_size = max(2, min(batch_size, int(available_tokens // tokens_per_case)))
+        
         all_cases = []
         batch_index = 0
         seen_ids = set()  # 用于去重
+        actual_batch_size = min(batch_size, dynamic_batch_size)
 
         while len(all_cases) < target_count:
             remaining = target_count - len(all_cases)
-            current_batch_size = min(batch_size, remaining)
+            current_batch_size = min(actual_batch_size, remaining)
 
             result = self._generate_single_batch(
                 requirement, example, current_batch_size, batch_index
@@ -105,6 +116,18 @@ class IncrementalPipeline:
             "total_generated": len(all_cases),
             "error": None
         }
+    
+    def _estimate_tokens(self, text: str) -> int:
+        """估算 token 数量（中文优化版）"""
+        if not text:
+            return 0
+        
+        chinese_chars = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
+        other_chars = len(text) - chinese_chars
+        chinese_tokens = chinese_chars / 1.8
+        other_tokens = other_chars / 3.5
+        
+        return int(chinese_tokens + other_tokens)
 
     def _generate_single_batch(
         self,

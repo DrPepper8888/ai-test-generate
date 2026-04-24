@@ -915,6 +915,129 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.send_json({"success": False, "error": str(e)}, 500)
             return
 
+        elif self.path == "/api/rules/learn":
+            """
+            自动学习规则（支持三种来源）
+            """
+            data = self.read_json_body()
+            source_type = data.get("source", "manual")
+            
+            try:
+                from src.harness.auto_learner import AutoLearner
+                from src.harness.memory_store import MemoryStore
+                
+                store = MemoryStore(PROJECT_ROOT / "data")
+                learner = AutoLearner(pipeline.llm, store)
+                
+                if source_type == "feedback":
+                    feedback = data.get("feedback", "")
+                    result = learner.learn_from_feedback(feedback, source="用户反馈")
+                elif source_type == "labeled_cases":
+                    cases = data.get("cases", [])
+                    labels = data.get("labels", {})
+                    result = learner.learn_from_session(cases, labels)
+                else:
+                    cases = data.get("cases", [])
+                    labels = data.get("labels", {})
+                    result = learner.learn_from_session(cases, labels)
+                
+                self.send_json(result)
+                
+            except Exception as e:
+                self.send_json({
+                    "success": False,
+                    "learned_count": 0,
+                    "discarded_count": 0,
+                    "rules": [],
+                    "discarded": [],
+                    "message": f"学习失败：{str(e)}"
+                }, 500)
+            return
+
+        elif self.path == "/api/rules/detail":
+            """获取规则详情 / 更新 / 删除"""
+            data = self.read_json_body()
+            rule_id = data.get("id")
+            
+            if not rule_id:
+                self.send_json({"success": False, "error": "缺少规则ID"}, 400)
+                return
+            
+            try:
+                from src.harness.memory_store import MemoryStore
+                store = MemoryStore(PROJECT_ROOT / "data")
+                rules = store.load_rules()
+                rule = next((r for r in rules if r.rule_id == rule_id), None)
+                
+                if not rule:
+                    self.send_json({"success": False, "error": "规则不存在"}, 404)
+                    return
+                
+                if self.command == "DELETE":
+                    rules = [r for r in rules if r.rule_id != rule_id]
+                    store.save_rules(rules)
+                    self.send_json({"success": True, "message": "规则已删除"})
+                    return
+                
+                if self.command == "PATCH":
+                    if "is_deprecated" in data:
+                        rule.is_deprecated = data["is_deprecated"]
+                    if "rule_text" in data:
+                        rule.rule_text = data["rule_text"]
+                    store.save_rules(rules)
+                    self.send_json({"success": True, "message": "规则已更新"})
+                    return
+                
+                self.send_json({
+                    "success": True,
+                    "rule": {
+                        "rule_id": rule.rule_id,
+                        "rule_text": rule.rule_text,
+                        "type": rule.type.value,
+                        "use_count": rule.use_count,
+                        "effective_rate": rule.effective_rate,
+                        "is_deprecated": rule.is_deprecated
+                    }
+                })
+                
+            except Exception as e:
+                self.send_json({"success": False, "error": str(e)}, 500)
+            return
+
+        elif self.path == "/api/rules/cleanup":
+            """清理已淘汰的规则"""
+            try:
+                from src.harness.memory_store import MemoryStore
+                store = MemoryStore(PROJECT_ROOT / "data")
+                rules = store.load_rules()
+                deleted = len([r for r in rules if r.is_deprecated])
+                store.save_rules([r for r in rules if not r.is_deprecated])
+                self.send_json({"success": True, "deleted_count": deleted})
+            except Exception as e:
+                self.send_json({"success": False, "error": str(e)}, 500)
+            return
+
+        elif self.path == "/api/rules/stats":
+            """获取规则统计"""
+            try:
+                from src.harness.memory_store import MemoryStore
+                store = MemoryStore(PROJECT_ROOT / "data")
+                rules = store.load_rules()
+                active = [r for r in rules if not r.is_deprecated]
+                deprecated = [r for r in rules if r.is_deprecated]
+                self.send_json({
+                    "success": True,
+                    "stats": {
+                        "total": len(rules),
+                        "active": len(active),
+                        "deprecated": len(deprecated),
+                        "auto_deprecated": len([r for r in deprecated if r.auto_deprecated])
+                    }
+                })
+            except Exception as e:
+                self.send_json({"success": False, "error": str(e)}, 500)
+            return
+
         else:
             self.send_json({"error": "Not Found"}, 404)
 

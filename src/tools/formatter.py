@@ -14,41 +14,69 @@ class FormatValidator:
         """从 LLM 原始输出中提取 JSON 数组"""
         text = raw_text.strip()
 
+        # 策略 0：检查是否为空或几乎为空
+        if not text or len(text) < 5:
+            return None
+
         # 策略 1：直接解析
         try:
             data = json.loads(text)
             if isinstance(data, list):
                 return data
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
             pass
 
-        # 策略 2：剥离 Markdown 代码围栏
+        # 策略 2：剥离 Markdown 代码围栏（改进：只匹配最外层的围栏）
         fence_pattern = r"```(?:json)?\s*([\s\S]*?)\s*```"
-        fence_match = re.search(fence_pattern, text, re.IGNORECASE)
-        if fence_match:
-            try:
-                data = json.loads(fence_match.group(1))
-                if isinstance(data, list):
-                    return data
-            except json.JSONDecodeError:
-                pass
+        fence_matches = list(re.finditer(fence_pattern, text, re.IGNORECASE))
+        if fence_matches:
+            # 优先使用最后一个完整的围栏块（通常 JSON 在最后）
+            for match in reversed(fence_matches):
+                content = match.group(1).strip()
+                if len(content) > 10:  # 内容太短可能是误匹配
+                    try:
+                        data = json.loads(content)
+                        if isinstance(data, list):
+                            return data
+                    except json.JSONDecodeError:
+                        continue
 
-        # 策略 3：找到第一个 [ 和最后一个 ] 之间的内容
-        start = text.find("[")
-        end = text.rfind("]")
-        if start != -1 and end != -1 and end > start:
-            try:
-                data = json.loads(text[start : end + 1])
-                if isinstance(data, list):
-                    return data
-            except json.JSONDecodeError:
-                pass
+        # 策略 3：找到第一个 [ 和对应的 ]（改进：使用栈来匹配括号）
+        bracket_pairs = self._find_bracket_pair(text, '[', ']')
+        if bracket_pairs:
+            # 尝试每个可能的括号对
+            for start, end in bracket_pairs:
+                if end > start:
+                    try:
+                        data = json.loads(text[start: end + 1])
+                        if isinstance(data, list):
+                            return data
+                    except json.JSONDecodeError:
+                        continue
 
         return None
+
+    def _find_bracket_pair(self, text: str, open_char: str, close_char: str) -> List[tuple]:
+        """使用栈来找到所有匹配的括号对"""
+        pairs = []
+        stack = []
+        
+        for i, char in enumerate(text):
+            if char == open_char:
+                stack.append(i)
+            elif char == close_char and stack:
+                start = stack.pop()
+                pairs.append((start, i))
+        
+        return pairs
 
     def extract_json_object(self, raw_text: str) -> Optional[dict]:
         """从 LLM 原始输出中提取 JSON 对象"""
         text = raw_text.strip()
+
+        # 检查是否为空
+        if not text or len(text) < 5:
+            return None
 
         try:
             data = json.loads(text)
@@ -57,25 +85,30 @@ class FormatValidator:
         except json.JSONDecodeError:
             pass
 
-        fence_pattern = r"```(?:json)?\s*([\s\S]*?)\s*```"
-        fence_match = re.search(fence_pattern, text, re.IGNORECASE)
-        if fence_match:
-            try:
-                data = json.loads(fence_match.group(1))
-                if isinstance(data, dict):
-                    return data
-            except json.JSONDecodeError:
-                pass
+        # 剥离 Markdown 代码围栏
+        fence_matches = list(re.finditer(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.IGNORECASE))
+        if fence_matches:
+            for match in reversed(fence_matches):
+                content = match.group(1).strip()
+                if len(content) > 10:
+                    try:
+                        data = json.loads(content)
+                        if isinstance(data, dict):
+                            return data
+                    except json.JSONDecodeError:
+                        continue
 
-        start = text.find("{")
-        end = text.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            try:
-                data = json.loads(text[start : end + 1])
-                if isinstance(data, dict):
-                    return data
-            except json.JSONDecodeError:
-                pass
+        # 使用栈匹配括号
+        brace_pairs = self._find_bracket_pair(text, '{', '}')
+        if brace_pairs:
+            for start, end in brace_pairs:
+                if end > start:
+                    try:
+                        data = json.loads(text[start: end + 1])
+                        if isinstance(data, dict):
+                            return data
+                    except json.JSONDecodeError:
+                        continue
 
         return None
 
