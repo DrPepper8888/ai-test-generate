@@ -188,12 +188,20 @@ class IncrementalPipeline:
         self, requirement: str, example: str, count: int, start_id: int
     ) -> str:
         """构建用户消息"""
+        # 检测示例格式
+        example_stripped = example.strip()
+        example_hint = ""
+        if example_stripped.startswith("{"):
+            example_hint = "（这是1条示例用例）"
+        elif "\n" in example_stripped and "," in example_stripped[:100]:
+            example_hint = "（注意：这只是1条示例用例，行号不代表用例数量）"
+        
         return f"""请根据以下需求生成 {count} 条测试用例。
 
 【测试需求】
 {requirement}
 
-【示例用例格式】
+【示例用例格式】{example_hint}
 {example}
 
 请严格按照上述格式输出 {count} 条测试用例，每条用例必须包含所有字段。

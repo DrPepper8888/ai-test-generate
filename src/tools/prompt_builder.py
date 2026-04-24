@@ -79,9 +79,20 @@ class PromptBuilder:
     ) -> str:
         """构建发给LLM的用户消息"""
         id_hint = f"（ID 从 TC_{start_id:03d} 开始编号）" if start_id != 2 else ""
+        
+        # 检测示例格式，避免误判
+        example_hint = ""
+        example_stripped = example.strip()
+        if example_stripped.startswith("{"):
+            example_hint = "（JSON对象格式，仅1条用例）"
+        elif example_stripped.startswith("["):
+            example_hint = "（JSON数组格式）"
+        elif "\n" in example_stripped and "," in example_stripped[:100]:
+            example_hint = "（注意：这只是1条示例用例，行号不代表用例数量）"
+        
         return (
             f"【测试需求描述】\n{requirement}\n\n"
-            f"【示例用例】\n{example}\n\n"
+            f"【示例用例】{example_hint}\n{example}\n\n"
             f"【生成数量】\n{count} 条{id_hint}\n\n"
             f"请严格按照示例用例的字段结构生成，输出纯 JSON 数组。"
         )
