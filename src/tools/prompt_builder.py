@@ -49,7 +49,7 @@ class PromptBuilder:
 
         return "\n\n---\n\n".join(parts)
 
-    def inject_learned_rules(self, base_prompt: str, rules: List[Dict]) -> str:
+    def inject_learned_rules(self, base_prompt: str, rules: List) -> str:
         """注入已学习的规则到提示词中"""
         if not rules:
             return base_prompt
@@ -58,7 +58,11 @@ class PromptBuilder:
         rules_section.append("请遵循以下从历史反馈中学习到的规则：\n")
 
         for i, rule in enumerate(rules[:10], 1):  # 最多注入10条
-            rule_text = rule.get("rule_text", "")
+            # 兼容 Rule 对象和 dict 两种格式
+            if hasattr(rule, "rule_text"):
+                rule_text = rule.rule_text
+            else:
+                rule_text = rule.get("rule_text", "")
             if rule_text:
                 rules_section.append(f"{i}. {rule_text}")
 

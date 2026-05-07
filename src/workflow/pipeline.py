@@ -111,6 +111,15 @@ class GenerationPipeline:
 
             # 提取示例字段结构（用于格式校验）
             expected_fields = self.validator.extract_fields_from_example(example)
+            
+            # 检测示例中的多步骤字段
+            expected_step_counts = self.validator.detect_step_fields_in_example(example)
+            if expected_step_counts:
+                # 将多步骤要求注入到用户消息中，强化提示
+                step_hint = "、".join([f"{k}（{v}步）" for k, v in expected_step_counts.items()])
+                step_reminder = f"\n\n【重要】示例中的 {step_hint} 都是多步骤字段，生成的用例也必须保持多步骤格式，绝对不能只写第1步！"
+            else:
+                step_reminder = ""
 
             # Step 2: 处理分批逻辑（超过 batch_size 时分多次调用）
             count = max(1, min(count, self.max_count * 2))  # 允许最多 40 条
@@ -129,7 +138,7 @@ class GenerationPipeline:
 
                 # Step 3: 调用 LLM（含重试）
                 batch_cases, batch_retries = self._call_with_retry(
-                    system_prompt, user_msg, expected_fields, start_id
+                    system_prompt, user_msg + step_reminder, expected_fields, start_id, expected_step_counts
                 )
                 retries += batch_retries
                 all_cases.extend(batch_cases)
@@ -148,10 +157,10 @@ class GenerationPipeline:
                     feedback = self.quality_gate.build_retry_feedback(quality_result)
                     supplementary_user_msg = (
                         self._build_user_message(requirement, example, max(2, len(missing_scenarios) * 2), start_id)
-                        + "\n\n" + feedback
+                        + step_reminder + "\n\n" + feedback
                     )
                     supplementary_cases, supplementary_retries = self._call_with_retry(
-                        system_prompt, supplementary_user_msg, expected_fields, start_id
+                        system_prompt, supplementary_user_msg, expected_fields, start_id, expected_step_counts
                     )
                     retries += supplementary_retries
                     all_cases.extend(supplementary_cases)
@@ -300,6 +309,7 @@ class GenerationPipeline:
         user_msg: str,
         expected_fields: list,
         start_id: int,
+        expected_step_counts: dict = None,
     ) -> tuple[list, int]:
         """
         调用 LLM 并在格式校验失败时自动重试
@@ -330,9 +340,9 @@ class GenerationPipeline:
 
             # 格式校验
             if expected_fields:
-                validation = self.validator.validate(cases, expected_fields)
+                validation = self.validator.validate(cases, expected_fields, expected_step_counts)
                 if not validation["valid"] and attempt < self.max_retries:
-                    feedback = self.validator.build_retry_feedback(validation, expected_fields)
+                    feedback = self.validator.build_retry_feedback(validation, expected_fields, expected_step_counts)
                     current_user_msg = user_msg + f"\n\n{feedback}"
                     retries += 1
                     continue

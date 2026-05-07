@@ -4,11 +4,67 @@
 """
 import json
 import re
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Dict
 
 
 class FormatValidator:
     """校验并修复 LLM 生成的测试用例格式"""
+
+    # 可能是步骤字段的名称
+    STEP_FIELD_NAMES = {
+        "steps", "step", "测试步骤", "操作步骤", "步骤",
+        "test_steps", "operation_steps", "执行步骤"
+    }
+
+    def count_steps(self, text: Any) -> int:
+        """
+        统计一个字段中的步骤数量
+        
+        Args:
+            text: 字段内容（可以是 str 或 list）
+            
+        Returns:
+            步骤数量
+        """
+        if isinstance(text, list):
+            return len(text)
+        
+        if not isinstance(text, str):
+            return 0
+        
+        # 统计编号步骤（1. 2. 3. 或 1） 2） 等）
+        pattern = r'(?:^|\n)\s*\d+[.)、]\s+'
+        matches = re.findall(pattern, text)
+        return len(matches)
+
+    def detect_step_fields_in_example(self, example_text: str) -> Dict[str, int]:
+        """
+        检测示例用例中的步骤字段及其步骤数量
+        
+        Args:
+            example_text: 示例用例的 JSON 文本
+            
+        Returns:
+            {字段名: 步骤数量}
+        """
+        result = {}
+        
+        try:
+            example = json.loads(example_text)
+            if isinstance(example, list) and example:
+                example = example[0]
+            
+            if isinstance(example, dict):
+                for key, value in example.items():
+                    key_lower = key.lower()
+                    if key_lower in self.STEP_FIELD_NAMES or any(name in key_lower for name in self.STEP_FIELD_NAMES):
+                        step_count = self.count_steps(value)
+                        if step_count >= 2:  # 只有2步以上才认为是多步骤字段
+                            result[key] = step_count
+        except (json.JSONDecodeError, TypeError):
+            pass
+        
+        return result
 
     def extract_json(self, raw_text: str) -> Optional[List]:
         """从 LLM 原始输出中提取 JSON 数组"""
@@ -142,10 +198,21 @@ class FormatValidator:
 
         return fields
 
-    def validate(self, cases: list, expected_fields: List[str]) -> dict:
-        """校验用例列表是否符合格式要求"""
+    def validate(self, cases: list, expected_fields: List[str], expected_step_counts: Dict[str, int] = None) -> dict:
+        """
+        校验用例列表是否符合格式要求
+        
+        Args:
+            cases: 用例列表
+            expected_fields: 期望的字段列表
+            expected_step_counts: 期望的步骤字段及步骤数量 {字段名: 期望数量}
+            
+        Returns:
+            校验结果
+        """
         errors = []
         missing_fields_all = set()
+        step_issues = []
 
         if not isinstance(cases, list):
             return {"valid": False, "errors": ["输出不是 JSON 数组"], "missing_fields": []}
@@ -174,13 +241,25 @@ class FormatValidator:
                         f"期望 {len(expected_set)} 个，实际 {len(case_fields)} 个"
                     )
 
+            # 校验步骤字段的步骤数量
+            if expected_step_counts:
+                for step_field, expected_count in expected_step_counts.items():
+                    if step_field in case:
+                        actual_count = self.count_steps(case[step_field])
+                        # 如果示例有 >=2 步，但生成的只有 1 步，就是问题
+                        if expected_count >= 2 and actual_count <= 1:
+                            issue = f"第 {i+1} 条用例的 '{step_field}' 字段只有 {actual_count} 步，示例有 {expected_count} 步！"
+                            step_issues.append(issue)
+                            errors.append(issue)
+
         return {
             "valid": len(errors) == 0,
             "errors": errors,
             "missing_fields": list(missing_fields_all),
+            "step_issues": step_issues,
         }
 
-    def build_retry_feedback(self, validation_result: dict, expected_fields: List[str]) -> str:
+    def build_retry_feedback(self, validation_result: dict, expected_fields: List[str], expected_step_counts: Dict[str, int] = None) -> str:
         """构建反馈给 LLM 的重试提示"""
         lines = [
             "上一次的输出格式有误，请修正后重新生成：",
@@ -194,8 +273,14 @@ class FormatValidator:
             lines.append(f"\n必须包含的字段：{expected_fields}")
             lines.append(f"缺失的字段：{validation_result['missing_fields']}")
 
+        if expected_step_counts and validation_result.get("step_issues"):
+            lines.append("\n【重要提醒】")
+            for field, count in expected_step_counts.items():
+                lines.append(f"  - 示例的 '{field}' 字段有 {count} 个步骤")
+                lines.append(f"  - 生成的用例的 '{field}' 字段也必须有多个步骤，绝对不能只写第1步！")
+
         lines.extend([
             "",
-            "请严格按照示例用例的字段结构重新生成，输出纯 JSON 数组，不要添加任何额外文字。",
+            "请严格按照示例用例的字段结构和步骤格式重新生成，输出纯 JSON 数组，不要添加任何额外文字。",
         ])
         return "\n".join(lines)
